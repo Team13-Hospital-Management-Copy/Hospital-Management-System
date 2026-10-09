@@ -79,12 +79,6 @@ The project testing plan covers:
 - Compatibility Testing
 - Regression Testing
 
-## Technology Stack
-
-The final programming language, application framework, and database technology are to be specified by the project team.
-
-Update this section with the actual technologies used in the implementation.
-
 ## Installation and Setup
 
 Setup instructions will be added once the implementation technology and project structure are finalized.
