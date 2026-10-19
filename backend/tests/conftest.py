@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 from app.models import User
+from app.notifications import MockNotificationGateway, get_gateway
 from app.security import hash_password
 
 TEST_DATABASE_URL = "sqlite://"
@@ -54,3 +55,11 @@ def seed_user(db_session):
         return user
 
     return _seed
+
+
+@pytest.fixture(autouse=True)
+def gateway(db_session):
+    """Fresh mock SMS/e-mail gateway per test, so tests can inspect exactly what was sent."""
+    mock = MockNotificationGateway()
+    app.dependency_overrides[get_gateway] = lambda: mock
+    return mock
