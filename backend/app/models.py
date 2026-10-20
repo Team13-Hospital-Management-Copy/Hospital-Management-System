@@ -30,3 +30,16 @@ class AuditLogEntry(Base):
     event_type: Mapped[str] = mapped_column(String(50))
     username: Mapped[str] = mapped_column(String(255))
     detail: Mapped[str] = mapped_column(String(500), default="")
+    
+class Patient(Base):
+    __tablename__ = "patients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uhid: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    full_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    age: Mapped[int] = mapped_column(Integer, nullable=False)
+    gender: Mapped[str] = mapped_column(String(20), nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    address: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
