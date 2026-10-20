@@ -9,3 +9,4 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     status: str
     message: str
+    token: str | None = None
