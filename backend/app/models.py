@@ -48,6 +48,19 @@ class AuditLogEntry(Base):
     detail: Mapped[str] = mapped_column(String(500), default="")
 
 
+class Patient(Base):
+    __tablename__ = "patients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uhid: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    full_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    age: Mapped[int] = mapped_column(Integer, nullable=False)
+    gender: Mapped[str] = mapped_column(String(20), nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    address: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 # --- Appointment lifecycle (US-09, US-10, US-11) -------------------------------------------
 #
 # The appointment record follows the shape agreed for Sprint 1 (patient UHID, doctor ID, slot,
