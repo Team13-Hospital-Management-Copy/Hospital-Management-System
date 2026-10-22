@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LoginRequest(BaseModel):
@@ -9,9 +11,6 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     status: str
     message: str
-
-    
-from pydantic import BaseModel, Field
 
 
 class PatientCreate(BaseModel):
@@ -31,3 +30,23 @@ class PatientResponse(BaseModel):
     phone: str
     address: str
 
+
+class AppointmentCreate(BaseModel):
+    patient_uhid: str
+    doctor_id: str
+    slot_start: datetime
+
+
+class AppointmentReschedule(BaseModel):
+    new_slot_start: datetime
+
+
+class AppointmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    patient_uhid: str
+    doctor_id: str
+    slot_start: datetime
+    status: str
+    rescheduled_count: int
