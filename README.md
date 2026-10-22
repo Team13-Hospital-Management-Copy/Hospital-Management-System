@@ -102,3 +102,45 @@ General steps:
 ## Project Status
 
 Academic software engineering project. Features and implementation details will be updated as development progresses.
+
+
+## Patient Registration and UHID Retrieval (US-05)
+
+### Register a Patient
+
+**Endpoint:** `POST /patients/`
+
+Registers a new patient and generates a Unique Hospital Identification (UHID).
+
+Example request:
+
+```json
+{
+  "full_name": "Test Patient",
+  "age": 30,
+  "gender": "Female",
+  "phone": "9876543210",
+  "address": "Test Address"
+}
+```
+
+A successful registration returns `201 Created` with the patient's details and generated UHID.
+
+### Retrieve a Patient
+
+**Endpoint:** `GET /patients/{uhid}`
+
+Retrieves a patient record using its UHID.
+
+Example: `GET /patients/HMS-000001`
+
+- `200 OK` — Patient found.
+- `404 Not Found` — Patient does not exist.
+
+### Validation
+
+- `age` must be between 0 and 130.
+- `full_name` must contain between 2 and 150 characters.
+- `gender` must contain between 1 and 20 characters.
+- `phone` must contain between 7 and 20 characters.
+- `address` is optional and can contain up to 300 characters.

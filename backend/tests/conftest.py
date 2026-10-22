@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 from app.models import User
+from app.notifications import MockNotificationGateway, get_gateway
 from app.roles import RECEPTIONIST
 from app.security import hash_password
 
@@ -69,3 +70,11 @@ def login_token(client):
         return response.json()["token"]
 
     return _login
+
+
+@pytest.fixture(autouse=True)
+def gateway(db_session):
+    """Fresh mock SMS/e-mail gateway per test, so tests can inspect exactly what was sent."""
+    mock = MockNotificationGateway()
+    app.dependency_overrides[get_gateway] = lambda: mock
+    return mock
