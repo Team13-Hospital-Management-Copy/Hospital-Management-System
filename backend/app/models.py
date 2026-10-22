@@ -25,9 +25,12 @@ class User(Base):
 
 
 class AuthToken(Base):
-    """Minimal bearer session so role checks have an identity to check.
+    """Bearer session. last_seen_at drives the HMS-SR-005 idle timeout (US-03).
 
-    No expiry or idle timeout here by design - that is HMS-SR-005 / US-03, not this story.
+    Stored as naive UTC (not DateTime(timezone=True)) to match the convention used for
+    Appointment/Notification: SQLite drops tzinfo on read-back, so a timezone-aware column
+    compared against datetime.now(timezone.utc) raises TypeError. Naive UTC throughout sidesteps
+    that on both SQLite and a production RDBMS.
     """
 
     __tablename__ = "auth_tokens"
@@ -35,7 +38,8 @@ class AuthToken(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: _utcnow().replace(tzinfo=None))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: _utcnow().replace(tzinfo=None))
 
 
 class AuditLogEntry(Base):
