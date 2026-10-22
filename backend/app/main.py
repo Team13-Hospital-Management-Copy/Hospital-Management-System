@@ -12,6 +12,7 @@ from .auth import router as auth_router
 from .database import Base, SessionLocal, engine
 from .notifications import dispatch_due_notifications, get_gateway
 from .notifications import router as notifications_router
+from .patients import router as patients_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -46,3 +47,4 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(appointments_router)
 app.include_router(notifications_router)
+app.include_router(patients_router)
