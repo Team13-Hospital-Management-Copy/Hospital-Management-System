@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from .admin import router as admin_router
 from .appointments import router as appointments_router
 from .auth import router as auth_router
 from .database import Base, SessionLocal, engine
@@ -42,5 +43,6 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Hospital Management System API", lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(appointments_router)
 app.include_router(notifications_router)

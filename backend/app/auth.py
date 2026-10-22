@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import AuditLogEntry, User
+from .rbac import issue_token
 from .schemas import LoginRequest, LoginResponse
 from .security import verify_password
 
@@ -43,8 +44,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
     if verify_password(payload.password, user.password_hash):
         user.failed_login_attempts = 0
         _log(db, "LOGIN_SUCCESS", user.username)
+        token = issue_token(db, user)
         db.commit()
-        return LoginResponse(status="ok", message="Login successful.")
+        return LoginResponse(status="ok", message="Login successful.", token=token)
 
     user.failed_login_attempts += 1
 

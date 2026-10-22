@@ -8,6 +8,7 @@ from app.database import Base, get_db
 from app.main import app
 from app.models import User
 from app.notifications import MockNotificationGateway, get_gateway
+from app.roles import RECEPTIONIST
 from app.security import hash_password
 
 TEST_DATABASE_URL = "sqlite://"
@@ -47,14 +48,28 @@ def client(db_session):
 
 @pytest.fixture()
 def seed_user(db_session):
-    def _seed(username: str = "receptionist1", password: str = "CorrectHorseBattery9!"):
-        user = User(username=username, password_hash=hash_password(password))
+    def _seed(
+        username: str = "receptionist1",
+        password: str = "CorrectHorseBattery9!",
+        role: str = RECEPTIONIST,
+    ):
+        user = User(username=username, password_hash=hash_password(password), role=role)
         db_session.add(user)
         db_session.commit()
         db_session.refresh(user)
         return user
 
     return _seed
+
+
+@pytest.fixture()
+def login_token(client):
+    def _login(username: str, password: str = "CorrectHorseBattery9!") -> str:
+        response = client.post("/auth/login", json={"username": username, "password": password})
+        assert response.status_code == 200, response.text
+        return response.json()["token"]
+
+    return _login
 
 
 @pytest.fixture(autouse=True)
