@@ -14,6 +14,11 @@ class LoginResponse(BaseModel):
     token: str | None = None
 
 
+class LogoutResponse(BaseModel):
+    status: str
+    message: str
+
+
 class AppointmentCreate(BaseModel):
     patient_uhid: str
     doctor_id: str

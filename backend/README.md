@@ -3,6 +3,7 @@
 Minimal FastAPI backend. Currently implements:
 
 - **US-01: Secure Staff Login with Account Lockout** (HMS-F-004, HMS-SR-004, HMS-SR-006)
+- **US-03: Session Timeout & Secure Logout** (HMS-SR-005)
 - **US-04: Role-Based Access Control (RBAC) Enforcement** (HMS-SR-002)
 - **US-09: Prevent Double-Booking of Appointment Slots** (HMS-F-006)
 - **US-10: Reschedule or Cancel Appointment** (HMS-F-007)
@@ -39,10 +40,21 @@ pytest -v
   consecutive failed attempts and records every login outcome (success, failure, lockout, or a
   blocked attempt on an already-locked account) to an audit log table. On success, returns a
   bearer `token` alongside `status`/`message`.
+- `POST /auth/logout` — `Authorization: Bearer <token>` (optional). Deletes the session token
+  immediately; reusing it afterward gets `401`. Idempotent: calling it with no token, or an
+  already-invalid one, still returns `200` (AC-HMS-SR-005).
 - `GET /admin/audit-log` — requires `Authorization: Bearer <token>` from a user whose role is
   `ADMINISTRATOR` or `SYSTEM_ADMINISTRATOR`. Returns the most recent 200 audit log entries.
   Serves as the concrete example endpoint proving role enforcement works; a receptionist or
   pharmacist token gets `403` and the denial itself is audit-logged (AC-HMS-SR-002).
+
+### Session timeout (US-03)
+
+Every authenticated request (anything going through `get_current_user`, i.e. anything behind
+`require_role(...)`) refreshes the token's `last_seen_at`. If more than 10 minutes pass between
+requests, the next one gets `401` and the token is deleted server-side — the client must log in
+again. This is a **sliding** idle timeout, not a fixed session lifetime: staying active keeps the
+session alive indefinitely.
 
 ### Roles
 
@@ -88,10 +100,6 @@ which is what makes a cancelled slot bookable again.
   `tests/conftest.py`); staff account creation is HMS-F-019 (Staff Account & Role Administration).
 - Account unlock requires a direct database update for now; the admin-assisted recovery process
   is part of HMS-F-019.
-- **The login token has no expiry or idle timeout.** US-04 needed *some* notion of identity for
-  role checks to check against, so a minimal bearer token is issued at login — but the 10-minute
-  idle timeout and secure logout are HMS-SR-005 (Session Timeout & Secure Logout / US-03), not
-  built here. Treat the current token as long-lived until US-03 lands.
 - Only one endpoint (`/admin/audit-log`) is actually behind a role check today, because it's the
   only sensitive endpoint that exists yet. `/auth/login` is intentionally public (you can't
   authenticate your way into getting a token). Every endpoint added by future stories (patient
@@ -107,4 +115,7 @@ which is what makes a cancelled slot bookable again.
 - The cutoff is set by environment variable; making it admin-editable in the UI belongs with US-19.
 - Appointment and notification endpoints do not yet apply `require_role(...)` — the RBAC
   mechanism exists (US-04), but nobody has wired it into `appointments.py`/`notifications.py`
-  yet. They're also not behind the session timeout, since that's still US-03.
+  yet, so they're also not behind the US-03 idle timeout (which only applies to requests that
+  go through `get_current_user`).
+- The idle timeout is per-token, not account-wide: logging in on a second device gets a second
+  token with its own clock. Nothing stops the same account from having many concurrent sessions.

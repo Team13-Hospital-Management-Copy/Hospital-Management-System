@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import AuditLogEntry, User
-from .rbac import issue_token
-from .schemas import LoginRequest, LoginResponse
+from .rbac import issue_token, revoke_current_token
+from .schemas import LoginRequest, LoginResponse, LogoutResponse
 from .security import verify_password
 
 router = APIRouter()
@@ -70,3 +70,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
     )
     db.commit()
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, GENERIC_INVALID_CREDENTIALS_MESSAGE)
+
+
+@router.post("/auth/logout", response_model=LogoutResponse)
+def logout(request: Request, db: Session = Depends(get_db)) -> LogoutResponse:
+    revoke_current_token(request, db)
+    return LogoutResponse(status="ok", message="Logged out.")
