@@ -1,10 +1,9 @@
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import AuditLogEntry, Patient
+from .models import AuditLogEntry, Patient, User
 from .rbac import require_role
 from .roles import DOCTOR, RECEPTIONIST
 from .schemas import PatientCreate, PatientResponse
@@ -13,6 +12,10 @@ router = APIRouter(prefix="/patients", tags=["Patients"])
 
 # AC-HMS-F-002: searching by any of the three keys returns the matching patients.
 PATIENT_SEARCH_LIMIT = 50
+
+# A concurrent registration can compute the same "next" UHID before either commits; retry with a
+# freshly generated one rather than failing the second request outright.
+MAX_UHID_GENERATION_ATTEMPTS = 5
 
 
 def generate_uhid(db: Session) -> str:
@@ -34,42 +37,47 @@ def generate_uhid(db: Session) -> str:
 def register_patient(
     payload: PatientCreate,
     db: Session = Depends(get_db),
+    user: User = Depends(require_role(RECEPTIONIST)),
 ) -> PatientResponse:
-    patient = Patient(
-        uhid=generate_uhid(db),
-        full_name=payload.full_name.strip(),
-        age=payload.age,
-        gender=payload.gender.strip(),
-        phone=payload.phone.strip(),
-        address=payload.address.strip(),
-    )
-
-    if not patient.full_name:
+    full_name = payload.full_name.strip()
+    if not full_name:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Patient name cannot be empty.",
         )
 
-    try:
+    for _ in range(MAX_UHID_GENERATION_ATTEMPTS):
+        patient = Patient(
+            uhid=generate_uhid(db),
+            full_name=full_name,
+            age=payload.age,
+            gender=payload.gender.strip(),
+            phone=payload.phone.strip(),
+            address=payload.address.strip(),
+        )
         db.add(patient)
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError:
+            # Another concurrent registration took this UHID first; retry with a new one.
+            db.rollback()
+            continue
 
         db.add(
             AuditLogEntry(
                 event_type="PATIENT_REGISTERED",
-                username="system",
+                username=user.username,
                 detail=f"Registered patient {patient.uhid}",
             )
         )
         db.commit()
         db.refresh(patient)
         return patient
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Could not register patient due to a duplicate identifier.",
-        )
+
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Could not register patient: UHID generation is under heavy contention. Try again.",
+    )
 
 
 def _contains_pattern(term: str) -> str:
@@ -117,6 +125,7 @@ def search_patients(
 def get_patient_by_uhid(
     uhid: str,
     db: Session = Depends(get_db),
+    _user=Depends(require_role(RECEPTIONIST, DOCTOR)),
 ) -> PatientResponse:
     patient = db.query(Patient).filter(Patient.uhid == uhid).first()
 
@@ -127,6 +136,3 @@ def get_patient_by_uhid(
         )
 
     return patient
-
-
-

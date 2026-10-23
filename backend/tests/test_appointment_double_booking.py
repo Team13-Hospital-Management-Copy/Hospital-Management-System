@@ -23,48 +23,77 @@ def booking(patient: str, doctor: str = "DOC-1", slot: datetime | None = None) -
     return {"patient_uhid": patient, "doctor_id": doctor, "slot_start": (slot or future_slot()).isoformat()}
 
 
-def test_second_booking_for_same_doctor_and_slot_is_rejected(client, db_session):
+def test_second_booking_for_same_doctor_and_slot_is_rejected(client, db_session, receptionist_header):
     slot = future_slot()
 
-    first = client.post(APPOINTMENTS_URL, json=booking("UHID-1", slot=slot))
-    second = client.post(APPOINTMENTS_URL, json=booking("UHID-2", slot=slot))
+    first = client.post(APPOINTMENTS_URL, json=booking("UHID-1", slot=slot), headers=receptionist_header)
+    second = client.post(APPOINTMENTS_URL, json=booking("UHID-2", slot=slot), headers=receptionist_header)
 
     assert first.status_code == 201
     assert second.status_code == 409
     assert db_session.query(Appointment).count() == 1
 
 
-def test_same_slot_with_different_doctor_and_different_slot_with_same_doctor_are_allowed(client):
+def test_same_slot_with_different_doctor_and_different_slot_with_same_doctor_are_allowed(
+    client, receptionist_header
+):
     slot = future_slot()
 
-    assert client.post(APPOINTMENTS_URL, json=booking("UHID-1", "DOC-1", slot)).status_code == 201
-    assert client.post(APPOINTMENTS_URL, json=booking("UHID-2", "DOC-2", slot)).status_code == 201
     assert (
-        client.post(APPOINTMENTS_URL, json=booking("UHID-3", "DOC-1", slot + timedelta(minutes=15))).status_code
+        client.post(APPOINTMENTS_URL, json=booking("UHID-1", "DOC-1", slot), headers=receptionist_header).status_code
+        == 201
+    )
+    assert (
+        client.post(APPOINTMENTS_URL, json=booking("UHID-2", "DOC-2", slot), headers=receptionist_header).status_code
+        == 201
+    )
+    assert (
+        client.post(
+            APPOINTMENTS_URL, json=booking("UHID-3", "DOC-1", slot + timedelta(minutes=15)), headers=receptionist_header
+        ).status_code
         == 201
     )
 
 
-def test_timezone_variants_of_the_same_instant_count_as_the_same_slot(client):
+def test_timezone_variants_of_the_same_instant_count_as_the_same_slot(client, receptionist_header):
     # 10:00 UTC and 15:30 IST are the same moment and must not both be bookable.
     slot = future_slot(hour=10)
     utc = slot.isoformat() + "+00:00"
     ist_equivalent = (slot + timedelta(hours=5, minutes=30)).isoformat() + "+05:30"
 
-    assert client.post(APPOINTMENTS_URL, json={**booking("UHID-1"), "slot_start": utc}).status_code == 201
-    assert client.post(APPOINTMENTS_URL, json={**booking("UHID-2"), "slot_start": ist_equivalent}).status_code == 409
+    assert (
+        client.post(
+            APPOINTMENTS_URL, json={**booking("UHID-1"), "slot_start": utc}, headers=receptionist_header
+        ).status_code
+        == 201
+    )
+    assert (
+        client.post(
+            APPOINTMENTS_URL, json={**booking("UHID-2"), "slot_start": ist_equivalent}, headers=receptionist_header
+        ).status_code
+        == 409
+    )
 
 
-def test_booking_in_the_past_is_rejected(client):
+def test_booking_in_the_past_is_rejected(client, receptionist_header):
     past = utcnow() - timedelta(hours=1)
-    assert client.post(APPOINTMENTS_URL, json=booking("UHID-1", slot=past)).status_code == 400
+    assert (
+        client.post(
+            APPOINTMENTS_URL, json=booking("UHID-1", slot=past), headers=receptionist_header
+        ).status_code
+        == 400
+    )
 
 
-def test_booked_slots_endpoint_shows_taken_slots_in_real_time(client):
+def test_booked_slots_endpoint_shows_taken_slots_in_real_time(client, receptionist_header):
     slot = future_slot()
-    client.post(APPOINTMENTS_URL, json=booking("UHID-1", slot=slot))
+    client.post(APPOINTMENTS_URL, json=booking("UHID-1", slot=slot), headers=receptionist_header)
 
-    response = client.get("/appointments/booked-slots", params={"doctor_id": "DOC-1", "day": slot.date().isoformat()})
+    response = client.get(
+        "/appointments/booked-slots",
+        params={"doctor_id": "DOC-1", "day": slot.date().isoformat()},
+        headers=receptionist_header,
+    )
 
     assert response.status_code == 200
     assert response.json()["booked"] == [slot.isoformat()]
@@ -72,6 +101,8 @@ def test_booked_slots_endpoint_shows_taken_slots_in_real_time(client):
 
 def test_concurrent_booking_attempts_for_same_slot_result_in_exactly_one_success(tmp_path):
     # AC-HMS-F-006: fire many booking attempts at the same instant from separate DB sessions.
+    # This calls book_appointment() directly (not over HTTP), so it is unaffected by the RBAC
+    # check on the POST /appointments route.
     engine = create_engine(f"sqlite:///{tmp_path / 'race.db'}", connect_args={"timeout": 30})
     Base.metadata.create_all(bind=engine)
     SessionFactory = sessionmaker(bind=engine, autoflush=False)
@@ -108,7 +139,15 @@ def test_concurrent_booking_attempts_for_same_slot_result_in_exactly_one_success
 
 
 @pytest.mark.parametrize("payload_missing", ["patient_uhid", "doctor_id", "slot_start"])
-def test_booking_requires_all_fields(client, payload_missing):
+def test_booking_requires_all_fields(client, payload_missing, receptionist_header):
     payload = booking("UHID-1")
     del payload[payload_missing]
-    assert client.post(APPOINTMENTS_URL, json=payload).status_code == 422
+    assert client.post(APPOINTMENTS_URL, json=payload, headers=receptionist_header).status_code == 422
+
+
+def test_booking_requires_login(client):
+    assert client.post(APPOINTMENTS_URL, json=booking("UHID-1")).status_code == 401
+
+
+def test_booked_slots_requires_login(client):
+    assert client.get("/appointments/booked-slots", params={"doctor_id": "DOC-1", "day": "2026-10-30"}).status_code == 401
