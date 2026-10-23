@@ -2,6 +2,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from .database import get_db
@@ -37,7 +38,16 @@ def _extract_token(request: Request) -> str:
     return token
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+# Declares the bearer scheme to OpenAPI so the /docs "Authorize" button sends the token. It does
+# not reject requests itself (auto_error=False); the 401 messages below stay the same.
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    _credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> User:
     token = _extract_token(request)
     auth_token = db.query(AuthToken).filter(AuthToken.token == token).one_or_none()
     if auth_token is None:
