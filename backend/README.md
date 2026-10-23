@@ -3,12 +3,15 @@
 Minimal FastAPI backend. Currently implements:
 
 - **US-01: Secure Staff Login with Account Lockout** (HMS-F-004, HMS-SR-004, HMS-SR-006)
+- **US-02: Enforce TLS 1.2+ Secure Communication** (HMS-SR-001, HMS-NF-003)
 - **US-03: Session Timeout & Secure Logout** (HMS-SR-005)
 - **US-04: Role-Based Access Control (RBAC) Enforcement** (HMS-SR-002)
 - **US-09: Prevent Double-Booking of Appointment Slots** (HMS-F-006)
 - **US-10: Reschedule or Cancel Appointment** (HMS-F-007)
 - **US-11: Appointment Confirmation & Reminder Notifications** (HMS-F-008)
 - **US-06: Patient Search & Record Retrieval** (HMS-F-002)
+- **US-07: Doctor Profile & Availability Management** (supports HMS-F-005, HMS-F-006)
+- **US-08: Book OPD Appointment with Real-Time Slot Availability** (HMS-F-005)
 
 ## Setup
 
@@ -26,8 +29,19 @@ uvicorn app.main:app --reload
 ```
 
 By default this uses a local SQLite file (`hms.db`). Set `DATABASE_URL` to point at a real
-RDBMS (e.g. `postgresql://user:pass@host/dbname`) for anything beyond local development, per
-SRS §3.3.
+RDBMS (e.g. `postgresql://user:pass@host/dbname?sslmode=verify-full`) for anything beyond local
+development, per SRS §3.3. A networked database URL must force TLS or the app refuses to start
+(US-02, see below).
+
+### Run over HTTPS (TLS 1.2+, US-02)
+
+```bash
+python -m app.serve --certfile cert.pem --keyfile key.pem --host 0.0.0.0 --port 8443
+```
+
+This serves HTTPS only: handshakes below TLS 1.2 and plaintext HTTP are refused, and every response
+carries an HSTS header. For a quick local try-out you can use the **test-only** certificate in
+`tests/fixtures/` (self-signed; never use it for a real deployment).
 
 ## Test
 
@@ -69,9 +83,9 @@ All times are UTC. A `slot_start` with a timezone offset (e.g. `+05:30`) is conv
 
 - `POST /appointments` — `{"patient_uhid": "...", "doctor_id": "...", "slot_start": "2026-10-21T10:00:00Z"}`.
   Returns `201` with the appointment, or `409` if that doctor's slot is already booked. Sends the
-  confirmation immediately and queues a reminder for 24h before the slot. *Temporary:* this is a
-  minimal booking endpoint so the lifecycle stories can be tested before US-08 merges; US-08's
-  booking endpoint should call `app.appointments.book_appointment()` and replace it.
+  confirmation immediately and queues a reminder for 24h before the slot. This is the low-level
+  booking call: it does not check that the patient/doctor exist or that the slot is on the doctor's
+  schedule. Front ends should use `POST /appointments/opd` (US-08) instead.
 - `GET /appointments/booked-slots?doctor_id=DOC-1&day=2026-10-21` — slots already taken that day.
 - `GET /appointments/{id}` — one appointment.
 - `POST /appointments/{id}/cancel` — cancels and frees the slot. `400` inside the cutoff window,
@@ -86,6 +100,35 @@ All times are UTC. A `slot_start` with a timezone offset (e.g. `+05:30`) is conv
 covering only `BOOKED` rows. The database itself rejects the second of two simultaneous bookings, so
 it is safe under concurrency (not just a "check then insert" in Python). Cancelled rows are excluded,
 which is what makes a cancelled slot bookable again.
+
+### Doctors (US-07)
+
+Writes need an `ADMINISTRATOR` or `SYSTEM_ADMINISTRATOR` token; reads need any logged-in user.
+Doctor IDs are generated like UHIDs: `DOC-000001`, `DOC-000002`, ...
+
+- `POST /doctors` — `{"full_name", "specialization", "department", "slot_minutes": 15, "schedule": [...]}`.
+  `schedule` is the weekly OPD timetable: a list of `{"weekday": 0-6 (0 = Monday), "start_time": "09:00",
+  "end_time": "13:00"}` blocks (UTC, like all slots). Overlapping blocks on the same day are rejected (`422`).
+- `GET /doctors?department=&specialization=` — active doctors (add `include_inactive=true` for all).
+- `GET /doctors/{doctor_id}` — one doctor with their schedule.
+- `PATCH /doctors/{doctor_id}` — change name/specialization/department/slot length, or set
+  `"is_active": false` to stop new bookings.
+- `PUT /doctors/{doctor_id}/schedule` — replace the whole weekly schedule.
+- `GET /doctors/{doctor_id}/available-slots?day=2026-10-30` — free, future slots that day. Worked out
+  live from the current schedule and bookings, so schedule changes and new bookings show up immediately.
+
+Creating, updating and rescheduling doctors is written to the audit log.
+
+### OPD booking (US-08)
+
+- `POST /appointments/opd` — `RECEPTIONIST` or `PATIENT` token.
+  `{"patient_uhid": "HMS-000001", "doctor_id": "DOC-000001", "department": "Cardiology" (optional), "slot_start": "2026-10-30T09:00:00Z"}`.
+
+Checks, in order: the patient is registered (`404`), the doctor exists (`404`) and is active (`409`),
+the doctor is in the chosen department (`422`), and the slot is one the doctor's schedule offers
+(`409`). It then calls `book_appointment()` (US-09), so double-booking protection and the US-11
+confirmation/reminder apply automatically. A booked slot disappears from `available-slots`
+(AC-HMS-F-005). Each booking is audit-logged with the user who made it.
 
 ### Patient search (US-06)
 
@@ -134,6 +177,18 @@ Errors:
 `GET /patients/{uhid}` (US-05) still returns the single patient by exact UHID. It does not yet
 apply `require_role(...)`, so it is not covered by the role check above.
 
+### Secure communication (US-02)
+
+- **Client ↔ server:** `python -m app.serve` uses an SSL context with `minimum_version = TLSv1_2`
+  (`app/tls.py`), so TLS 1.0/1.1 and plaintext connections fail the handshake.
+- **Behind a proxy/load balancer:** if TLS is terminated in front of the app, run with
+  `ENFORCE_HTTPS=1 TRUST_PROXY_HEADERS=1`. Requests whose `X-Forwarded-Proto` is not `https` get
+  `403 HTTPS (TLS 1.2 or higher) is required.` Configure the proxy itself for TLS 1.2+ as well.
+- **Server ↔ database:** at startup `DATABASE_URL` is checked. A PostgreSQL URL must use
+  `sslmode=require|verify-ca|verify-full` (prefer `verify-full`); a MySQL URL must use
+  `ssl_mode=REQUIRED|VERIFY_CA|VERIFY_IDENTITY` or `ssl_ca`. Otherwise the app refuses to start.
+  Local SQLite files are allowed (no network connection).
+
 ### Configuration
 
 | Variable | Default | Meaning |
@@ -141,6 +196,9 @@ apply `require_role(...)`, so it is not covered by the role check above.
 | `APPOINTMENT_CHANGE_CUTOFF_HOURS` | `2` | Reschedule/cancel is refused when the slot is closer than this (US-10). |
 | `NOTIFICATION_CHANNELS` | `SMS,EMAIL` | Channels each notification is sent on (US-11). |
 | `REMINDER_DISPATCH_INTERVAL_SECONDS` | `60` | How often the background job sends due reminders; `0` disables it. |
+| `ENFORCE_HTTPS` | `0` (`1` under `app.serve`) | Reject plaintext HTTP requests and send HSTS (US-02). |
+| `TRUST_PROXY_HEADERS` | `0` | Use `X-Forwarded-Proto` from a TLS-terminating proxy (US-02). |
+| `REQUIRE_DB_TLS` | `1` | Refuse a networked `DATABASE_URL` that doesn't force TLS. `0` only for a throwaway local DB (US-02). |
 
 ## Known limitations / out of scope
 
@@ -153,7 +211,10 @@ apply `require_role(...)`, so it is not covered by the role check above.
   authenticate your way into getting a token). Every endpoint added by future stories (patient
   records, billing, prescriptions, etc.) needs to apply `require_role(...)` itself — RBAC isn't
   retroactive.
-- TLS enforcement (HMS-SR-001) is a deployment/infrastructure concern, not application code.
+- TLS for external services (SMS/e-mail gateway, LIS, payment gateway) must be checked when those
+  integrations are built; they are still mocks today.
+- `uvicorn app.main:app` (plain HTTP) is still the quickest way to develop locally; use
+  `python -m app.serve` for anything that handles real data.
 - **Notifications use a mock gateway** (`MockNotificationGateway`): messages are logged and stored,
   not actually delivered, because no SMS/e-mail gateway is available yet (playbook §9 risk for US-11).
   Plug in a real one by overriding the `get_gateway` dependency.

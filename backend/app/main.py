@@ -9,10 +9,13 @@ from fastapi import FastAPI
 from .admin import router as admin_router
 from .appointments import router as appointments_router
 from .auth import router as auth_router
+from .booking import router as booking_router
 from .database import Base, SessionLocal, engine
+from .doctors import router as doctors_router
 from .notifications import dispatch_due_notifications, get_gateway
 from .notifications import router as notifications_router
 from .patients import router as patients_router
+from .tls import HttpsOnlyMiddleware
 
 Base.metadata.create_all(bind=engine)
 
@@ -43,8 +46,11 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Hospital Management System API", lifespan=lifespan)
+app.add_middleware(HttpsOnlyMiddleware)
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(booking_router)
 app.include_router(appointments_router)
 app.include_router(notifications_router)
 app.include_router(patients_router)
+app.include_router(doctors_router)
