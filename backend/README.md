@@ -8,6 +8,7 @@ Minimal FastAPI backend. Currently implements:
 - **US-09: Prevent Double-Booking of Appointment Slots** (HMS-F-006)
 - **US-10: Reschedule or Cancel Appointment** (HMS-F-007)
 - **US-11: Appointment Confirmation & Reminder Notifications** (HMS-F-008)
+- **US-06: Patient Search & Record Retrieval** (HMS-F-002)
 
 ## Setup
 
@@ -85,6 +86,53 @@ All times are UTC. A `slot_start` with a timezone offset (e.g. `+05:30`) is conv
 covering only `BOOKED` rows. The database itself rejects the second of two simultaneous bookings, so
 it is safe under concurrency (not just a "check then insert" in Python). Cancelled rows are excluded,
 which is what makes a cancelled slot bookable again.
+
+### Patient search (US-06)
+
+`GET /patients/search` finds patients by exactly one of `uhid`, `name` or `phone` (HMS-F-002,
+AC-HMS-F-002). Requires `Authorization: Bearer <token>` from a `RECEPTIONIST` or `DOCTOR`; other
+roles get `403`, and a missing or invalid token gets `401`.
+
+- Matching is a partial, case-insensitive "contains" match on the chosen field. Input is trimmed
+  first; `%` and `_` in the input are matched literally, not as wildcards.
+- Phone numbers are matched as stored (no digit normalisation), so search with the digits as they
+  were entered at registration.
+- Results are ordered by UHID and capped at 50 patients per request.
+- No match returns `200` with an empty list.
+
+Request:
+
+```
+GET /patients/search?name=lakshmi
+Authorization: Bearer <token>
+```
+
+Response `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "uhid": "HMS-000001",
+    "full_name": "Lakshmi Narayan",
+    "age": 45,
+    "gender": "Female",
+    "phone": "9876543210",
+    "address": "12 Park Road"
+  }
+]
+```
+
+Errors:
+
+| Status | When | `detail` |
+| --- | --- | --- |
+| `401` | No or invalid bearer token. | `Missing or invalid session token.` |
+| `403` | Token belongs to a role other than receptionist or doctor. | `You do not have permission to access this resource.` |
+| `422` | No key, more than one key, a blank value, or a value over the field's length (`uhid` 20, `name` 150, `phone` 20). | `Provide exactly one of uhid, name or phone.` / `Search value cannot be empty.` / a validation error |
+
+`GET /patients/{uhid}` (US-05) still returns the single patient by exact UHID. It does not yet
+apply `require_role(...)`, so it is not covered by the role check above.
 
 ### Configuration
 
