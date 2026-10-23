@@ -7,7 +7,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import Appointment, Notification
+from .models import Appointment, Notification, User
+from .rbac import get_current_user, require_role
+from .roles import ADMINISTRATOR, SYSTEM_ADMINISTRATOR
 
 logger = logging.getLogger("hms.notifications")
 
@@ -194,13 +196,19 @@ def dispatch_due_notifications(db: Session, gateway: NotificationGateway, now: d
 
 
 @router.post("/notifications/dispatch-due")
-def dispatch_due(db: Session = Depends(get_db), gateway: NotificationGateway = Depends(get_gateway)) -> dict:
+def dispatch_due(
+    db: Session = Depends(get_db),
+    gateway: NotificationGateway = Depends(get_gateway),
+    _user: User = Depends(require_role(ADMINISTRATOR, SYSTEM_ADMINISTRATOR)),
+) -> dict:
     """Trigger for a scheduler/cron job; the app also runs this periodically in the background."""
     return {"sent": dispatch_due_notifications(db, gateway)}
 
 
 @router.get("/appointments/{appointment_id}/notifications")
-def list_notifications(appointment_id: int, db: Session = Depends(get_db)) -> list[dict]:
+def list_notifications(
+    appointment_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)
+) -> list[dict]:
     rows = (
         db.query(Notification)
         .filter(Notification.appointment_id == appointment_id)

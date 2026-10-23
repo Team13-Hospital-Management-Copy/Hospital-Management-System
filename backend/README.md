@@ -174,8 +174,8 @@ Errors:
 | `403` | Token belongs to a role other than receptionist or doctor. | `You do not have permission to access this resource.` |
 | `422` | No key, more than one key, a blank value, or a value over the field's length (`uhid` 20, `name` 150, `phone` 20). | `Provide exactly one of uhid, name or phone.` / `Search value cannot be empty.` / a validation error |
 
-`GET /patients/{uhid}` (US-05) still returns the single patient by exact UHID. It does not yet
-apply `require_role(...)`, so it is not covered by the role check above.
+`GET /patients/{uhid}` (US-05) also requires `RECEPTIONIST` or `DOCTOR`, same as search.
+`POST /patients/` (registration) requires `RECEPTIONIST`.
 
 ### Secure communication (US-02)
 
@@ -206,11 +206,14 @@ apply `require_role(...)`, so it is not covered by the role check above.
   `tests/conftest.py`); staff account creation is HMS-F-019 (Staff Account & Role Administration).
 - Account unlock requires a direct database update for now; the admin-assisted recovery process
   is part of HMS-F-019.
-- Only one endpoint (`/admin/audit-log`) is actually behind a role check today, because it's the
-  only sensitive endpoint that exists yet. `/auth/login` is intentionally public (you can't
-  authenticate your way into getting a token). Every endpoint added by future stories (patient
-  records, billing, prescriptions, etc.) needs to apply `require_role(...)` itself — RBAC isn't
-  retroactive.
+- `/auth/login` is intentionally public (you can't authenticate your way into getting a token).
+  Every endpoint added by a future story needs to apply `require_role(...)` or `get_current_user`
+  itself — RBAC isn't retroactive. All patient, appointment, notification, doctor and admin
+  endpoints are behind one or the other as of this fix; the read endpoints under `/doctors`
+  accept any logged-in user, writes need `ADMINISTRATOR`/`SYSTEM_ADMINISTRATOR`.
+- Appointment read access isn't scoped to "your own appointment" — any logged-in receptionist,
+  patient or doctor can look up any appointment by ID. Enforcing per-patient ownership would need
+  a patient-to-user link that doesn't exist yet.
 - TLS for external services (SMS/e-mail gateway, LIS, payment gateway) must be checked when those
   integrations are built; they are still mocks today.
 - `uvicorn app.main:app` (plain HTTP) is still the quickest way to develop locally; use
@@ -222,9 +225,8 @@ apply `require_role(...)`, so it is not covered by the role check above.
   patient's UHID.
 - If a booking is made less than 24h ahead, only the confirmation is sent (no separate reminder).
 - The cutoff is set by environment variable; making it admin-editable in the UI belongs with US-19.
-- Appointment and notification endpoints do not yet apply `require_role(...)` — the RBAC
-  mechanism exists (US-04), but nobody has wired it into `appointments.py`/`notifications.py`
-  yet, so they're also not behind the US-03 idle timeout (which only applies to requests that
-  go through `get_current_user`).
+- Patient registration retries up to 5 times on a UHID collision (same for doctor IDs); if every
+  attempt collides the request fails with `409` rather than looping forever. Extremely unlikely
+  in practice, but worth knowing if load testing ever hits it.
 - The idle timeout is per-token, not account-wide: logging in on a second device gets a second
   token with its own clock. Nothing stops the same account from having many concurrent sessions.

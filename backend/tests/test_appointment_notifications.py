@@ -12,10 +12,12 @@ def future_slot(days: float = 3, hour: int = 10) -> datetime:
     return (utcnow() + timedelta(days=days)).replace(hour=hour, minute=0, second=0, microsecond=0)
 
 
-def book(client, patient="UHID-1", slot=None) -> dict:
+def book(client, headers, patient="UHID-1", slot=None) -> dict:
     slot = slot or future_slot()
     response = client.post(
-        APPOINTMENTS_URL, json={"patient_uhid": patient, "doctor_id": "DOC-1", "slot_start": slot.isoformat()}
+        APPOINTMENTS_URL,
+        json={"patient_uhid": patient, "doctor_id": "DOC-1", "slot_start": slot.isoformat()},
+        headers=headers,
     )
     assert response.status_code == 201, response.text
     return response.json()
@@ -28,9 +30,11 @@ def notifications(db_session, appointment_id, kind=None):
     return query.all()
 
 
-def test_confirmation_is_sent_within_one_minute_of_booking_on_every_channel(client, db_session, gateway):
+def test_confirmation_is_sent_within_one_minute_of_booking_on_every_channel(
+    client, db_session, gateway, receptionist_header
+):
     before = utcnow()
-    appointment = book(client)
+    appointment = book(client, receptionist_header)
 
     confirmations = notifications(db_session, appointment["id"], "CONFIRMATION")
 
@@ -42,9 +46,9 @@ def test_confirmation_is_sent_within_one_minute_of_booking_on_every_channel(clie
     assert all("confirmed" in message for _, _, message in gateway.sent)
 
 
-def test_reminder_is_scheduled_24_hours_before_and_sent_when_due(client, db_session, gateway):
+def test_reminder_is_scheduled_24_hours_before_and_sent_when_due(client, db_session, gateway, receptionist_header):
     slot = future_slot()
-    appointment = book(client, slot=slot)
+    appointment = book(client, receptionist_header, slot=slot)
     reminders = notifications(db_session, appointment["id"], "REMINDER")
     assert len(reminders) == 2
     assert all(r.scheduled_for == slot - REMINDER_LEAD_TIME and r.status == "PENDING" for r in reminders)
@@ -63,19 +67,19 @@ def test_reminder_is_scheduled_24_hours_before_and_sent_when_due(client, db_sess
     assert dispatch_due_notifications(db_session, gateway, now=slot) == 0
 
 
-def test_booking_less_than_24_hours_ahead_sends_confirmation_only(client, db_session):
-    appointment = book(client, slot=utcnow() + timedelta(hours=5))
+def test_booking_less_than_24_hours_ahead_sends_confirmation_only(client, db_session, receptionist_header):
+    appointment = book(client, receptionist_header, slot=utcnow() + timedelta(hours=5))
 
     assert notifications(db_session, appointment["id"], "REMINDER") == []
     assert len(notifications(db_session, appointment["id"], "CONFIRMATION")) == 2
 
 
-def test_cancelling_stops_the_reminder_and_notifies_the_patient(client, db_session, gateway):
+def test_cancelling_stops_the_reminder_and_notifies_the_patient(client, db_session, gateway, receptionist_header):
     slot = future_slot()
-    appointment = book(client, slot=slot)
+    appointment = book(client, receptionist_header, slot=slot)
     gateway.sent.clear()
 
-    client.post(f"{APPOINTMENTS_URL}/{appointment['id']}/cancel")
+    client.post(f"{APPOINTMENTS_URL}/{appointment['id']}/cancel", headers=receptionist_header)
 
     assert all(r.status == "CANCELLED" for r in notifications(db_session, appointment["id"], "REMINDER"))
     assert len(notifications(db_session, appointment["id"], "CANCELLATION")) == 2
@@ -83,13 +87,17 @@ def test_cancelling_stops_the_reminder_and_notifies_the_patient(client, db_sessi
     assert dispatch_due_notifications(db_session, gateway, now=slot) == 0
 
 
-def test_rescheduling_moves_the_reminder_and_sends_a_new_confirmation(client, db_session, gateway):
+def test_rescheduling_moves_the_reminder_and_sends_a_new_confirmation(
+    client, db_session, gateway, receptionist_header
+):
     old_slot = future_slot(days=3)
     new_slot = future_slot(days=5)
-    appointment = book(client, slot=old_slot)
+    appointment = book(client, receptionist_header, slot=old_slot)
 
     client.post(
-        f"{APPOINTMENTS_URL}/{appointment['id']}/reschedule", json={"new_slot_start": new_slot.isoformat()}
+        f"{APPOINTMENTS_URL}/{appointment['id']}/reschedule",
+        json={"new_slot_start": new_slot.isoformat()},
+        headers=receptionist_header,
     )
 
     reminders = notifications(db_session, appointment["id"], "REMINDER")
@@ -100,14 +108,14 @@ def test_rescheduling_moves_the_reminder_and_sends_a_new_confirmation(client, db
     assert "moved" in gateway.sent[-1][2]
 
 
-def test_gateway_failure_does_not_block_booking_and_is_retried(client, db_session, gateway):
+def test_gateway_failure_does_not_block_booking_and_is_retried(client, db_session, gateway, receptionist_header):
     original_send = gateway.send
 
     def failing_send(channel, recipient, message):
         raise ConnectionError("SMS gateway unreachable")
 
     gateway.send = failing_send
-    appointment = book(client)
+    appointment = book(client, receptionist_header)
     confirmations = notifications(db_session, appointment["id"], "CONFIRMATION")
     assert all(n.status == "FAILED" and "unreachable" in n.last_error for n in confirmations)
 
@@ -118,11 +126,17 @@ def test_gateway_failure_does_not_block_booking_and_is_retried(client, db_sessio
         assert n.status == "SENT"
 
 
-def test_notification_history_endpoint_lists_what_was_sent(client):
-    appointment = book(client)
+def test_notification_history_endpoint_lists_what_was_sent(client, receptionist_header):
+    appointment = book(client, receptionist_header)
 
-    response = client.get(f"{APPOINTMENTS_URL}/{appointment['id']}/notifications")
+    response = client.get(f"{APPOINTMENTS_URL}/{appointment['id']}/notifications", headers=receptionist_header)
 
     assert response.status_code == 200
     kinds = sorted({n["kind"] for n in response.json()})
     assert kinds == ["CONFIRMATION", "REMINDER"]
+
+
+def test_notification_history_requires_login(client, receptionist_header):
+    appointment = book(client, receptionist_header)
+
+    assert client.get(f"{APPOINTMENTS_URL}/{appointment['id']}/notifications").status_code == 401

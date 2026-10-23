@@ -72,6 +72,18 @@ def login_token(client):
     return _login
 
 
+@pytest.fixture()
+def receptionist_header(seed_user, login_token):
+    """A ready-to-use Authorization header for a RECEPTIONIST user.
+
+    Most writes (patient registration, appointment booking) require RECEPTIONIST or PATIENT;
+    this covers the common case so tests that aren't specifically about role enforcement don't
+    each have to seed and log in a user themselves.
+    """
+    seed_user()
+    return {"Authorization": f"Bearer {login_token('receptionist1')}"}
+
+
 @pytest.fixture(autouse=True)
 def gateway(db_session):
     """Fresh mock SMS/e-mail gateway per test, so tests can inspect exactly what was sent."""

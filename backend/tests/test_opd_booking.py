@@ -28,10 +28,13 @@ def setup_world(client, seed_user, login_token) -> tuple[str, str, date]:
         },
         headers=auth_header(admin),
     ).json()
-    patient = client.post(
-        "/patients/", json={"full_name": "Meera Iyer", "age": 34, "gender": "F", "phone": "9876543210"}
-    ).json()
     seed_user(username="reception1", role=RECEPTIONIST)
+    receptionist = login_token("reception1")
+    patient = client.post(
+        "/patients/",
+        json={"full_name": "Meera Iyer", "age": 34, "gender": "F", "phone": "9876543210"},
+        headers=auth_header(receptionist),
+    ).json()
     return doctor["doctor_id"], patient["uhid"], day
 
 

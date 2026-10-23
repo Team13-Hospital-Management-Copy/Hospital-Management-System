@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import APPOINTMENT_STATUS_BOOKED, APPOINTMENT_STATUS_CANCELLED, Appointment
+from .models import APPOINTMENT_STATUS_BOOKED, APPOINTMENT_STATUS_CANCELLED, Appointment, User
 from .notifications import (
     NotificationGateway,
     get_gateway,
@@ -15,7 +15,12 @@ from .notifications import (
     on_appointment_rescheduled,
     utcnow,
 )
+from .rbac import get_current_user, require_role
+from .roles import PATIENT, RECEPTIONIST
 from .schemas import AppointmentCreate, AppointmentOut, AppointmentReschedule
+
+# HMS-F-005/006/007: a patient or receptionist creates, cancels or reschedules appointments.
+BOOKING_ROLES = (RECEPTIONIST, PATIENT)
 
 router = APIRouter()
 
@@ -180,9 +185,10 @@ def create_appointment(
     payload: AppointmentCreate,
     db: Session = Depends(get_db),
     gateway: NotificationGateway = Depends(get_gateway),
+    _user: User = Depends(require_role(*BOOKING_ROLES)),
 ) -> Appointment:
-    # Minimal booking endpoint so US-09/US-11 can be exercised before US-08 merges. When US-08
-    # lands, its endpoint should call book_appointment() and this one can be removed.
+    # Low-level booking call: it does not check that the patient/doctor exist or that the slot is
+    # on the doctor's schedule. Front ends should use POST /appointments/opd (US-08) instead.
     try:
         return book_appointment(db, gateway, payload.patient_uhid, payload.doctor_id, payload.slot_start)
     except (SlotUnavailableError, AppointmentChangeError) as exc:
@@ -190,13 +196,17 @@ def create_appointment(
 
 
 @router.get("/appointments/booked-slots")
-def get_booked_slots(doctor_id: str, day: date, db: Session = Depends(get_db)) -> dict:
+def get_booked_slots(
+    doctor_id: str, day: date, db: Session = Depends(get_db), _user: User = Depends(get_current_user)
+) -> dict:
     """HMS-F-006: real-time view of which slots are taken for a doctor on a given day (UTC)."""
     return {"doctor_id": doctor_id, "day": day, "booked": booked_slots(db, doctor_id, day)}
 
 
 @router.get("/appointments/{appointment_id}", response_model=AppointmentOut)
-def get_appointment(appointment_id: int, db: Session = Depends(get_db)) -> Appointment:
+def get_appointment(
+    appointment_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)
+) -> Appointment:
     appointment = db.get(Appointment, appointment_id)
     if appointment is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found.")
@@ -208,6 +218,7 @@ def cancel(
     appointment_id: int,
     db: Session = Depends(get_db),
     gateway: NotificationGateway = Depends(get_gateway),
+    _user: User = Depends(require_role(*BOOKING_ROLES)),
 ) -> Appointment:
     try:
         return cancel_appointment(db, gateway, appointment_id)
@@ -221,6 +232,7 @@ def reschedule(
     payload: AppointmentReschedule,
     db: Session = Depends(get_db),
     gateway: NotificationGateway = Depends(get_gateway),
+    _user: User = Depends(require_role(*BOOKING_ROLES)),
 ) -> Appointment:
     try:
         return reschedule_appointment(db, gateway, appointment_id, payload.new_slot_start)

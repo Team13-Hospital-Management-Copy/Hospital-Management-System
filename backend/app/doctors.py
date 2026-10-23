@@ -1,7 +1,9 @@
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 
 from .appointments import booked_slots, to_utc_naive
 from .database import get_db
@@ -17,6 +19,11 @@ router = APIRouter(prefix="/doctors", tags=["Doctors"])
 DOCTOR_ADMIN_ROLES = (ADMINISTRATOR, SYSTEM_ADMINISTRATOR)
 
 DOCTOR_NOT_FOUND_MESSAGE = "Doctor not found."
+
+# A concurrent creation can compute the same "next" doctor_id before either commits; retry with a
+# freshly generated one rather than failing the second request outright (same issue as, and same
+# fix as, generate_uhid in patients.py).
+MAX_DOCTOR_ID_GENERATION_ATTEMPTS = 5
 
 
 def generate_doctor_id(db: Session) -> str:
@@ -129,15 +136,28 @@ def create_doctor(
     db: Session = Depends(get_db),
     user: User = Depends(require_role(*DOCTOR_ADMIN_ROLES)),
 ) -> DoctorOut:
-    doctor = Doctor(
-        doctor_id=generate_doctor_id(db),
-        full_name=payload.full_name.strip(),
-        specialization=payload.specialization.strip(),
-        department=payload.department.strip(),
-        slot_minutes=payload.slot_minutes,
-    )
-    db.add(doctor)
-    db.flush()
+    for _ in range(MAX_DOCTOR_ID_GENERATION_ATTEMPTS):
+        doctor = Doctor(
+            doctor_id=generate_doctor_id(db),
+            full_name=payload.full_name.strip(),
+            specialization=payload.specialization.strip(),
+            department=payload.department.strip(),
+            slot_minutes=payload.slot_minutes,
+        )
+        db.add(doctor)
+        try:
+            db.flush()
+        except IntegrityError:
+            # Another concurrent creation took this doctor_id first; retry with a new one.
+            db.rollback()
+            continue
+        break
+    else:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Could not create doctor: ID generation is under heavy contention. Try again.",
+        )
+
     _replace_schedule(db, doctor, payload.schedule)
     _audit(db, user, "DOCTOR_CREATED", f"Created doctor {doctor.doctor_id}")
     db.commit()
@@ -154,9 +174,11 @@ def list_doctors(
 ) -> list[DoctorOut]:
     query = db.query(Doctor)
     if department:
-        query = query.filter(Doctor.department.ilike(department.strip()))
+        # Exact (case-insensitive) match: this is a filter, not a search, and ilike() without
+        # wrapping the term in %...% would let a caller pass their own % or _ wildcard.
+        query = query.filter(func.lower(Doctor.department) == department.strip().lower())
     if specialization:
-        query = query.filter(Doctor.specialization.ilike(specialization.strip()))
+        query = query.filter(func.lower(Doctor.specialization) == specialization.strip().lower())
     if not include_inactive:
         query = query.filter(Doctor.is_active.is_(True))
     return [_to_out(db, d) for d in query.order_by(Doctor.doctor_id).all()]

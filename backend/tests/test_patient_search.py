@@ -19,8 +19,8 @@ def patient_payload(**overrides):
     return data
 
 
-def register(client, **overrides) -> dict:
-    response = client.post(PATIENTS_URL, json=patient_payload(**overrides))
+def register(client, headers, **overrides) -> dict:
+    response = client.post(PATIENTS_URL, json=patient_payload(**overrides), headers=headers)
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -30,10 +30,10 @@ def auth_headers(seed_user, login_token, role=RECEPTIONIST, username="staff1"):
     return {"Authorization": f"Bearer {login_token(username)}"}
 
 
-def test_search_by_uhid_returns_the_correct_patient(client, seed_user, login_token):
+def test_search_by_uhid_returns_the_correct_patient(client, seed_user, login_token, receptionist_header):
     headers = auth_headers(seed_user, login_token)
-    target = register(client, full_name="Asha Rao", phone="9000000001")
-    register(client, full_name="Bina Rao", phone="9000000002")
+    target = register(client, receptionist_header, full_name="Asha Rao", phone="9000000001")
+    register(client, receptionist_header, full_name="Bina Rao", phone="9000000002")
 
     response = client.get(SEARCH_URL, params={"uhid": target["uhid"]}, headers=headers)
 
@@ -41,10 +41,10 @@ def test_search_by_uhid_returns_the_correct_patient(client, seed_user, login_tok
     assert [p["uhid"] for p in response.json()] == [target["uhid"]]
 
 
-def test_search_by_name_returns_the_correct_patient(client, seed_user, login_token):
+def test_search_by_name_returns_the_correct_patient(client, seed_user, login_token, receptionist_header):
     headers = auth_headers(seed_user, login_token)
-    target = register(client, full_name="Meera Iyer", phone="9000000003")
-    register(client, full_name="Ravi Kumar", phone="9000000004")
+    target = register(client, receptionist_header, full_name="Meera Iyer", phone="9000000003")
+    register(client, receptionist_header, full_name="Ravi Kumar", phone="9000000004")
 
     response = client.get(SEARCH_URL, params={"name": "Meera Iyer"}, headers=headers)
 
@@ -52,10 +52,10 @@ def test_search_by_name_returns_the_correct_patient(client, seed_user, login_tok
     assert [p["uhid"] for p in response.json()] == [target["uhid"]]
 
 
-def test_search_by_phone_returns_the_correct_patient(client, seed_user, login_token):
+def test_search_by_phone_returns_the_correct_patient(client, seed_user, login_token, receptionist_header):
     headers = auth_headers(seed_user, login_token)
-    target = register(client, full_name="Dev Sharma", phone="9123456780")
-    register(client, full_name="Esha Sharma", phone="9111111111")
+    target = register(client, receptionist_header, full_name="Dev Sharma", phone="9123456780")
+    register(client, receptionist_header, full_name="Esha Sharma", phone="9111111111")
 
     response = client.get(SEARCH_URL, params={"phone": "9123456780"}, headers=headers)
 
@@ -63,10 +63,12 @@ def test_search_by_phone_returns_the_correct_patient(client, seed_user, login_to
     assert [p["uhid"] for p in response.json()] == [target["uhid"]]
 
 
-def test_name_search_supports_partial_and_case_insensitive_matches(client, seed_user, login_token):
+def test_name_search_supports_partial_and_case_insensitive_matches(
+    client, seed_user, login_token, receptionist_header
+):
     headers = auth_headers(seed_user, login_token)
-    target = register(client, full_name="Lakshmi Narayan", phone="9000000005")
-    register(client, full_name="Gopal Das", phone="9000000006")
+    target = register(client, receptionist_header, full_name="Lakshmi Narayan", phone="9000000005")
+    register(client, receptionist_header, full_name="Gopal Das", phone="9000000006")
 
     response = client.get(SEARCH_URL, params={"name": "  LAKSH "}, headers=headers)
 
@@ -74,10 +76,10 @@ def test_name_search_supports_partial_and_case_insensitive_matches(client, seed_
     assert [p["uhid"] for p in response.json()] == [target["uhid"]]
 
 
-def test_phone_search_supports_partial_matches(client, seed_user, login_token):
+def test_phone_search_supports_partial_matches(client, seed_user, login_token, receptionist_header):
     headers = auth_headers(seed_user, login_token)
-    target = register(client, full_name="Farah Khan", phone="9988776655")
-    register(client, full_name="Gita Menon", phone="9000000007")
+    target = register(client, receptionist_header, full_name="Farah Khan", phone="9988776655")
+    register(client, receptionist_header, full_name="Gita Menon", phone="9000000007")
 
     response = client.get(SEARCH_URL, params={"phone": "8776"}, headers=headers)
 
@@ -85,10 +87,10 @@ def test_phone_search_supports_partial_matches(client, seed_user, login_token):
     assert [p["uhid"] for p in response.json()] == [target["uhid"]]
 
 
-def test_uhid_search_supports_partial_matches(client, seed_user, login_token):
+def test_uhid_search_supports_partial_matches(client, seed_user, login_token, receptionist_header):
     headers = auth_headers(seed_user, login_token)
-    first = register(client, full_name="Hari Pillai", phone="9000000008")
-    register(client, full_name="Isha Nair", phone="9000000009")
+    first = register(client, receptionist_header, full_name="Hari Pillai", phone="9000000008")
+    register(client, receptionist_header, full_name="Isha Nair", phone="9000000009")
 
     response = client.get(SEARCH_URL, params={"uhid": first["uhid"][-4:]}, headers=headers)
 
@@ -96,11 +98,13 @@ def test_uhid_search_supports_partial_matches(client, seed_user, login_token):
     assert [p["uhid"] for p in response.json()] == [first["uhid"]]
 
 
-def test_multiple_matching_patients_are_all_returned_in_uhid_order(client, seed_user, login_token):
+def test_multiple_matching_patients_are_all_returned_in_uhid_order(
+    client, seed_user, login_token, receptionist_header
+):
     headers = auth_headers(seed_user, login_token)
-    first = register(client, full_name="Kiran Mehta", phone="9000000010")
-    second = register(client, full_name="Kiran Joshi", phone="9000000011")
-    register(client, full_name="Lata Pandey", phone="9000000012")
+    first = register(client, receptionist_header, full_name="Kiran Mehta", phone="9000000010")
+    second = register(client, receptionist_header, full_name="Kiran Joshi", phone="9000000011")
+    register(client, receptionist_header, full_name="Lata Pandey", phone="9000000012")
 
     response = client.get(SEARCH_URL, params={"name": "kiran"}, headers=headers)
 
@@ -108,9 +112,9 @@ def test_multiple_matching_patients_are_all_returned_in_uhid_order(client, seed_
     assert [p["uhid"] for p in response.json()] == sorted([first["uhid"], second["uhid"]])
 
 
-def test_search_result_contains_the_patient_fields(client, seed_user, login_token):
+def test_search_result_contains_the_patient_fields(client, seed_user, login_token, receptionist_header):
     headers = auth_headers(seed_user, login_token)
-    created = register(client, full_name="Mohan Das", age=45, gender="Male", phone="9000000013")
+    created = register(client, receptionist_header, full_name="Mohan Das", age=45, gender="Male", phone="9000000013")
 
     response = client.get(SEARCH_URL, params={"uhid": created["uhid"]}, headers=headers)
 
@@ -123,9 +127,9 @@ def test_search_result_contains_the_patient_fields(client, seed_user, login_toke
     assert patient["phone"] == "9000000013"
 
 
-def test_no_matching_patient_returns_empty_list(client, seed_user, login_token):
+def test_no_matching_patient_returns_empty_list(client, seed_user, login_token, receptionist_header):
     headers = auth_headers(seed_user, login_token)
-    register(client, full_name="Nina Roy", phone="9000000014")
+    register(client, receptionist_header, full_name="Nina Roy", phone="9000000014")
 
     response = client.get(SEARCH_URL, params={"name": "Nonexistent"}, headers=headers)
 
@@ -133,9 +137,11 @@ def test_no_matching_patient_returns_empty_list(client, seed_user, login_token):
     assert response.json() == []
 
 
-def test_wildcard_characters_in_input_are_matched_literally(client, seed_user, login_token):
+def test_wildcard_characters_in_input_are_matched_literally(
+    client, seed_user, login_token, receptionist_header
+):
     headers = auth_headers(seed_user, login_token)
-    register(client, full_name="Omar Ali", phone="9000000015")
+    register(client, receptionist_header, full_name="Omar Ali", phone="9000000015")
 
     percent = client.get(SEARCH_URL, params={"name": "%"}, headers=headers)
     underscore = client.get(SEARCH_URL, params={"name": "_"}, headers=headers)
@@ -146,10 +152,12 @@ def test_wildcard_characters_in_input_are_matched_literally(client, seed_user, l
     assert underscore.json() == []
 
 
-def test_search_returns_at_most_the_search_limit(client, seed_user, login_token, db_session):
+def test_search_returns_at_most_the_search_limit(
+    client, seed_user, login_token, db_session, receptionist_header
+):
     headers = auth_headers(seed_user, login_token)
     for index in range(55):
-        register(client, full_name=f"Common Name {index}", phone=f"90000{index:05d}")
+        register(client, receptionist_header, full_name=f"Common Name {index}", phone=f"90000{index:05d}")
 
     response = client.get(SEARCH_URL, params={"name": "Common"}, headers=headers)
 
@@ -225,9 +233,9 @@ def test_search_requires_authentication(client, seed_user):
     assert response.status_code == 401
 
 
-def test_search_is_allowed_for_doctors(client, seed_user, login_token):
+def test_search_is_allowed_for_doctors(client, seed_user, login_token, receptionist_header):
     headers = auth_headers(seed_user, login_token, role=DOCTOR, username="doctor1")
-    target = register(client, full_name="Pooja Varma", phone="9000000016")
+    target = register(client, receptionist_header, full_name="Pooja Varma", phone="9000000016")
 
     response = client.get(SEARCH_URL, params={"uhid": target["uhid"]}, headers=headers)
 
@@ -250,10 +258,10 @@ def test_search_declares_bearer_auth_so_docs_can_send_the_token(client):
     assert {"HTTPBearer": []} in schema["paths"]["/patients/search"]["get"]["security"]
 
 
-def test_uhid_retrieval_still_works_after_search_is_added(client):
-    created = register(client, full_name="Quinn Fernandes", phone="9000000017")
+def test_uhid_retrieval_still_works_after_search_is_added(client, receptionist_header):
+    created = register(client, receptionist_header, full_name="Quinn Fernandes", phone="9000000017")
 
-    response = client.get(f"/patients/{created['uhid']}")
+    response = client.get(f"/patients/{created['uhid']}", headers=receptionist_header)
 
     assert response.status_code == 200
     assert response.json()["uhid"] == created["uhid"]
