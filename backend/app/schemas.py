@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -56,3 +56,60 @@ class AppointmentOut(BaseModel):
     slot_start: datetime
     status: str
     rescheduled_count: int
+
+
+# --- Doctor management (US-07) ---------------------------------------------------------------
+
+
+class ScheduleBlock(BaseModel):
+    weekday: int = Field(ge=0, le=6, description="0 = Monday ... 6 = Sunday")
+    start_time: time
+    end_time: time
+
+    @model_validator(mode="after")
+    def _start_before_end(self):
+        if self.start_time >= self.end_time:
+            raise ValueError("start_time must be before end_time")
+        return self
+
+
+class DoctorCreate(BaseModel):
+    full_name: str = Field(min_length=2, max_length=150)
+    specialization: str = Field(min_length=2, max_length=100)
+    department: str = Field(min_length=2, max_length=100)
+    slot_minutes: int = Field(default=15, ge=5, le=120)
+    schedule: list[ScheduleBlock] = Field(default_factory=list)
+
+
+class DoctorUpdate(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=150)
+    specialization: str | None = Field(default=None, min_length=2, max_length=100)
+    department: str | None = Field(default=None, min_length=2, max_length=100)
+    slot_minutes: int | None = Field(default=None, ge=5, le=120)
+    is_active: bool | None = None
+
+
+class DoctorOut(BaseModel):
+    doctor_id: str
+    full_name: str
+    specialization: str
+    department: str
+    slot_minutes: int
+    is_active: bool
+    schedule: list[ScheduleBlock]
+
+
+class AvailableSlots(BaseModel):
+    doctor_id: str
+    day: date
+    available: list[datetime]
+
+
+# --- OPD booking (US-08) -----------------------------------------------------------------------
+
+
+class OpdBookingRequest(BaseModel):
+    patient_uhid: str = Field(min_length=1, max_length=20)
+    doctor_id: str = Field(min_length=1, max_length=20)
+    department: str | None = Field(default=None, max_length=100)
+    slot_start: datetime

@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Time, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -115,3 +115,34 @@ class Notification(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str] = mapped_column(String(500), default="")
+
+
+# --- Doctor management (US-07) ---------------------------------------------------------------
+
+
+class Doctor(Base):
+    __tablename__ = "doctors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Public identifier used everywhere else (e.g. Appointment.doctor_id), like the patient UHID.
+    doctor_id: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    full_name: Mapped[str] = mapped_column(String(150))
+    specialization: Mapped[str] = mapped_column(String(100), index=True)
+    department: Mapped[str] = mapped_column(String(100), index=True)
+    # Length of one bookable OPD slot. Slots are generated from the weekly schedule in these steps.
+    slot_minutes: Mapped[int] = mapped_column(Integer, default=15)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class DoctorScheduleBlock(Base):
+    """One block of a doctor's weekly OPD schedule, e.g. Monday 09:00-13:00 (UTC, like all slots)."""
+
+    __tablename__ = "doctor_schedule_blocks"
+    __table_args__ = (UniqueConstraint("doctor_pk", "weekday", "start_time", name="uq_schedule_block_start"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    doctor_pk: Mapped[int] = mapped_column(ForeignKey("doctors.id"), index=True)
+    weekday: Mapped[int] = mapped_column(Integer)  # 0 = Monday ... 6 = Sunday
+    start_time: Mapped[time] = mapped_column(Time)
+    end_time: Mapped[time] = mapped_column(Time)
