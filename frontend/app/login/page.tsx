@@ -33,10 +33,10 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-sm">
-      <h1 className="mb-1 text-2xl font-semibold text-slate-900">Staff login</h1>
-      <p className="mb-6 text-sm text-slate-500">US-01: secure staff login with account lockout.</p>
+      <h1 className="mb-1 font-serif text-2xl font-semibold tracking-tight text-stone-900">Staff login</h1>
+      <p className="mb-6 text-sm text-stone-500">US-01: secure staff login with account lockout.</p>
 
-      <Card>
+      <Card accent="teal">
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormField label="Username" value={username} onChange={setUsername} required />
           <FormField label="Password" type="password" value={password} onChange={setPassword} required />
@@ -49,8 +49,8 @@ export default function LoginPage() {
         </form>
       </Card>
 
-      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-        <p className="font-medium text-slate-600">Demo accounts</p>
+      <div className="mt-4 rounded-lg border border-stone-200 bg-white/60 px-4 py-3 text-xs text-stone-500">
+        <p className="font-medium text-stone-600">Demo accounts</p>
         <p className="mt-1">
           <code className="font-mono">admin1</code> / <code className="font-mono">Admin#12345</code>{" "}
           (Administrator)

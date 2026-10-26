@@ -49,8 +49,8 @@ export default function RegisterPatientPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="text-2xl font-semibold text-slate-900">Register a patient</h1>
-      <p className="mt-1 text-sm text-slate-500">US-05: issues a unique hospital ID (UHID) on success.</p>
+      <h1 className="font-serif text-2xl font-semibold tracking-tight text-stone-900">Register a patient</h1>
+      <p className="mt-1 text-sm text-stone-500">US-05: issues a unique hospital ID (UHID) on success.</p>
 
       {patient && (
         <div className="mt-6">
@@ -62,19 +62,28 @@ export default function RegisterPatientPage() {
         </div>
       )}
 
-      <Card className="mt-6">
+      <Card accent="teal" className="mt-6">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField label="Full name" value={fullName} onChange={setFullName} required />
+          <FormField label="Full name" value={fullName} onChange={setFullName} required accent="teal" />
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Age" type="number" value={age} onChange={setAge} required min={0} max={130} />
-            <FormField label="Gender" value={gender} onChange={setGender} required />
+            <FormField
+              label="Age"
+              type="number"
+              value={age}
+              onChange={setAge}
+              required
+              min={0}
+              max={130}
+              accent="teal"
+            />
+            <FormField label="Gender" value={gender} onChange={setGender} required accent="teal" />
           </div>
-          <FormField label="Phone" value={phone} onChange={setPhone} required />
-          <FormField label="Address" value={address} onChange={setAddress} />
+          <FormField label="Phone" value={phone} onChange={setPhone} required accent="teal" />
+          <FormField label="Address" value={address} onChange={setAddress} accent="teal" />
 
           {error && <ErrorAlert message={error} />}
 
-          <PrimaryButton type="submit" disabled={submitting}>
+          <PrimaryButton type="submit" disabled={submitting} accent="teal">
             {submitting ? "Registering..." : "Register patient"}
           </PrimaryButton>
         </form>

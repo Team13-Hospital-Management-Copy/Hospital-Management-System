@@ -87,8 +87,10 @@ export default function BookAppointmentPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="text-2xl font-semibold text-slate-900">Book an OPD appointment</h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <h1 className="font-serif text-2xl font-semibold tracking-tight text-stone-900">
+        Book an OPD appointment
+      </h1>
+      <p className="mt-1 text-sm text-stone-500">
         US-08: pick an available slot. US-11: a confirmation is sent the moment it is booked.
       </p>
 
@@ -103,8 +105,8 @@ export default function BookAppointmentPage() {
           </SuccessAlert>
           {notifications.length > 0 && (
             <Card>
-              <h2 className="text-sm font-medium text-slate-700">Notifications sent</h2>
-              <ul className="mt-2 divide-y divide-slate-100 text-sm text-slate-600">
+              <h2 className="text-sm font-medium text-stone-700">Notifications sent</h2>
+              <ul className="mt-2 divide-y divide-stone-100 text-sm text-stone-600">
                 {notifications.map((n) => (
                   <li key={n.id} className="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
                     <span>
@@ -113,7 +115,7 @@ export default function BookAppointmentPage() {
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         n.status === "SENT"
-                          ? "bg-emerald-50 text-emerald-700"
+                          ? "bg-teal-50 text-teal-700"
                           : "bg-amber-50 text-amber-700"
                       }`}
                     >
@@ -127,7 +129,7 @@ export default function BookAppointmentPage() {
         </div>
       )}
 
-      <Card className="mt-6 space-y-4">
+      <Card accent="rose" className="mt-6 space-y-4">
         <FormField
           label="Patient UHID"
           placeholder="HMS-000001"
@@ -135,14 +137,15 @@ export default function BookAppointmentPage() {
           onChange={setPatientUhid}
           required
           mono
+          accent="rose"
         />
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Doctor</label>
+          <label className="block text-sm font-medium text-stone-700">Doctor</label>
           <select
             value={doctorId}
             onChange={(e) => setDoctorId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm shadow-sm transition focus:border-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-100"
           >
             {doctors.length === 0 && <option value="">No doctors yet - set one up first</option>}
             {doctors.map((d) => (
@@ -153,13 +156,13 @@ export default function BookAppointmentPage() {
           </select>
         </div>
 
-        <FormField label="Day" type="date" value={day} onChange={setDay} />
+        <FormField label="Day" type="date" value={day} onChange={setDay} accent="rose" />
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Available slots</label>
-          {loadingSlots && <p className="mt-2 text-sm text-slate-400">Loading...</p>}
+          <label className="block text-sm font-medium text-stone-700">Available slots</label>
+          {loadingSlots && <p className="mt-2 text-sm text-stone-400">Loading...</p>}
           {!loadingSlots && slots.length === 0 && (
-            <p className="mt-2 text-sm text-slate-400">No open slots on this day.</p>
+            <p className="mt-2 text-sm text-stone-400">No open slots on this day.</p>
           )}
           <div className="mt-2 flex flex-wrap gap-2">
             {slots.map((slot) => (
@@ -169,8 +172,8 @@ export default function BookAppointmentPage() {
                 onClick={() => setSelectedSlot(slot)}
                 className={`rounded-lg border px-3 py-1.5 text-sm transition ${
                   selectedSlot === slot
-                    ? "border-indigo-600 bg-indigo-600 text-white"
-                    : "border-slate-300 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
+                    ? "border-rose-700 bg-rose-700 text-white"
+                    : "border-stone-300 text-stone-700 hover:border-rose-300 hover:bg-rose-50"
                 }`}
               >
                 {new Date(slot).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -185,6 +188,7 @@ export default function BookAppointmentPage() {
           type="button"
           disabled={submitting || !patientUhid || !doctorId || !selectedSlot}
           onClick={handleBook}
+          accent="rose"
         >
           {submitting ? "Booking..." : "Book appointment"}
         </PrimaryButton>

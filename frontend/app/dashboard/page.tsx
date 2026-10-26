@@ -2,12 +2,27 @@
 
 import Link from "next/link";
 import { useRequireAuth } from "@/lib/auth-context";
+import { Card } from "@/components/Card";
+import type { Accent } from "@/components/Button";
 
-const ACTIONS = [
+const STEPS: {
+  href: string;
+  step: string;
+  title: string;
+  description: string;
+  accent: Accent;
+  iconBg: string;
+  iconFg: string;
+  icon: React.ReactNode;
+}[] = [
   {
     href: "/doctors/new",
+    step: "1",
     title: "Set up a doctor",
     description: "US-07: create a doctor profile with a weekly schedule.",
+    accent: "violet",
+    iconBg: "bg-violet-50 group-hover:bg-violet-700",
+    iconFg: "text-violet-700 group-hover:text-white",
     icon: (
       <path
         strokeLinecap="round"
@@ -18,8 +33,12 @@ const ACTIONS = [
   },
   {
     href: "/patients/new",
+    step: "2",
     title: "Register a patient",
     description: "US-05: register a new patient and issue a UHID.",
+    accent: "teal",
+    iconBg: "bg-teal-50 group-hover:bg-teal-700",
+    iconFg: "text-teal-700 group-hover:text-white",
     icon: (
       <path
         strokeLinecap="round"
@@ -30,8 +49,12 @@ const ACTIONS = [
   },
   {
     href: "/appointments/book",
+    step: "3",
     title: "Book an OPD appointment",
     description: "US-08 / US-11: book a real-time slot and get an instant confirmation.",
+    accent: "rose",
+    iconBg: "bg-rose-50 group-hover:bg-rose-700",
+    iconFg: "text-rose-700 group-hover:text-white",
     icon: (
       <path
         strokeLinecap="round"
@@ -48,25 +71,41 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Welcome, {session.username}</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Sprint 1 workflow: set up a doctor, register a patient, then book an appointment between them.
+      <h1 className="font-serif text-2xl font-semibold tracking-tight text-stone-900">
+        Welcome, {session.username}
+      </h1>
+      <p className="mt-1 text-sm text-stone-500">
+        The Sprint 1 workflow, in order: set up a doctor, register a patient, then book an appointment
+        between them.
       </p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        {ACTIONS.map((action) => (
-          <Link
-            key={action.href}
-            href={action.href}
-            className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-5 w-5">
-                {action.icon}
-              </svg>
+      <div className="relative mt-10 grid gap-6 sm:grid-cols-3">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-0 right-0 top-5 hidden h-px bg-gradient-to-r from-violet-200 via-teal-200 to-rose-200 sm:block"
+        />
+        {STEPS.map((item) => (
+          <Link key={item.href} href={item.href} className="group relative">
+            <span className="absolute -top-3 left-5 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-stone-200 bg-white text-xs font-semibold text-stone-500">
+              {item.step}
             </span>
-            <h2 className="mt-3 font-medium text-slate-900">{action.title}</h2>
-            <p className="mt-1 text-sm text-slate-500">{action.description}</p>
+            <Card accent={item.accent} className="h-full pt-7 transition group-hover:-translate-y-0.5 group-hover:shadow-md">
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${item.iconBg}`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  className={`h-5 w-5 transition ${item.iconFg}`}
+                >
+                  {item.icon}
+                </svg>
+              </span>
+              <h2 className="mt-3 font-serif font-semibold text-stone-900">{item.title}</h2>
+              <p className="mt-1 text-sm text-stone-500">{item.description}</p>
+            </Card>
           </Link>
         ))}
       </div>
