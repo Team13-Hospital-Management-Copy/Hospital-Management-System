@@ -22,7 +22,12 @@ router = APIRouter(tags=["Appointments"])
 BOOKING_ROLES = (RECEPTIONIST, PATIENT)
 
 
-@router.post("/appointments/opd", response_model=AppointmentOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/appointments/opd",
+    response_model=AppointmentOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Book an OPD appointment",
+)
 def book_opd_appointment(
     payload: OpdBookingRequest,
     db: Session = Depends(get_db),

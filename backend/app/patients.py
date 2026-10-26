@@ -33,6 +33,7 @@ def generate_uhid(db: Session) -> str:
     "/",
     response_model=PatientResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="Register a new patient",
 )
 def register_patient(
     payload: PatientCreate,
@@ -86,7 +87,7 @@ def _contains_pattern(term: str) -> str:
     return f"%{escaped}%"
 
 
-@router.get("/search", response_model=list[PatientResponse])
+@router.get("/search", response_model=list[PatientResponse], summary="Search patients")
 def search_patients(
     uhid: str | None = Query(default=None, max_length=20),
     name: str | None = Query(default=None, max_length=150),
@@ -121,7 +122,7 @@ def search_patients(
     )
 
 
-@router.get("/{uhid}", response_model=PatientResponse)
+@router.get("/{uhid}", response_model=PatientResponse, summary="Get patient by UHID")
 def get_patient_by_uhid(
     uhid: str,
     db: Session = Depends(get_db),

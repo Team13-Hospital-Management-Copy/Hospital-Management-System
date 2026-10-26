@@ -130,7 +130,9 @@ def is_schedule_slot(db: Session, doctor: Doctor, slot_start: datetime) -> bool:
 # --- HTTP endpoints --------------------------------------------------------------------------
 
 
-@router.post("", response_model=DoctorOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=DoctorOut, status_code=status.HTTP_201_CREATED, summary="Create a doctor profile"
+)
 def create_doctor(
     payload: DoctorCreate,
     db: Session = Depends(get_db),
@@ -164,7 +166,7 @@ def create_doctor(
     return _to_out(db, doctor)
 
 
-@router.get("", response_model=list[DoctorOut])
+@router.get("", response_model=list[DoctorOut], summary="List doctors")
 def list_doctors(
     department: str | None = Query(default=None, max_length=100),
     specialization: str | None = Query(default=None, max_length=100),
@@ -184,14 +186,14 @@ def list_doctors(
     return [_to_out(db, d) for d in query.order_by(Doctor.doctor_id).all()]
 
 
-@router.get("/{doctor_id}", response_model=DoctorOut)
+@router.get("/{doctor_id}", response_model=DoctorOut, summary="Get a doctor")
 def get_doctor(
     doctor_id: str, db: Session = Depends(get_db), _user: User = Depends(get_current_user)
 ) -> DoctorOut:
     return _to_out(db, get_doctor_or_404(db, doctor_id))
 
 
-@router.patch("/{doctor_id}", response_model=DoctorOut)
+@router.patch("/{doctor_id}", response_model=DoctorOut, summary="Update a doctor")
 def update_doctor(
     doctor_id: str,
     payload: DoctorUpdate,
@@ -207,7 +209,7 @@ def update_doctor(
     return _to_out(db, doctor)
 
 
-@router.put("/{doctor_id}/schedule", response_model=DoctorOut)
+@router.put("/{doctor_id}/schedule", response_model=DoctorOut, summary="Replace a doctor's schedule")
 def replace_schedule(
     doctor_id: str,
     blocks: list[ScheduleBlock],
@@ -221,7 +223,9 @@ def replace_schedule(
     return _to_out(db, doctor)
 
 
-@router.get("/{doctor_id}/available-slots", response_model=AvailableSlots)
+@router.get(
+    "/{doctor_id}/available-slots", response_model=AvailableSlots, summary="Get a doctor's available slots"
+)
 def get_available_slots(
     doctor_id: str,
     day: date,
