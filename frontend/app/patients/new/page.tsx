@@ -4,6 +4,9 @@ import { useState, type FormEvent } from "react";
 import { useRequireAuth } from "@/lib/auth-context";
 import { ApiError, registerPatient, type PatientResponse } from "@/lib/api";
 import { ErrorAlert, SuccessAlert } from "@/components/Alert";
+import { Card } from "@/components/Card";
+import { FormField } from "@/components/FormField";
+import { PrimaryButton } from "@/components/Button";
 
 export default function RegisterPatientPage() {
   const session = useRequireAuth();
@@ -59,58 +62,23 @@ export default function RegisterPatientPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <Field label="Full name" value={fullName} onChange={setFullName} required />
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Age" type="number" value={age} onChange={setAge} required min={0} max={130} />
-          <Field label="Gender" value={gender} onChange={setGender} required />
-        </div>
-        <Field label="Phone" value={phone} onChange={setPhone} required />
-        <Field label="Address" value={address} onChange={setAddress} />
+      <Card className="mt-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <FormField label="Full name" value={fullName} onChange={setFullName} required />
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Age" type="number" value={age} onChange={setAge} required min={0} max={130} />
+            <FormField label="Gender" value={gender} onChange={setGender} required />
+          </div>
+          <FormField label="Phone" value={phone} onChange={setPhone} required />
+          <FormField label="Address" value={address} onChange={setAddress} />
 
-        {error && <ErrorAlert message={error} />}
+          {error && <ErrorAlert message={error} />}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
-          {submitting ? "Registering..." : "Register patient"}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-  required = false,
-  min,
-  max,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  required?: boolean;
-  min?: number;
-  max?: number;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-slate-700">{label}</label>
-      <input
-        type={type}
-        required={required}
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-      />
+          <PrimaryButton type="submit" disabled={submitting}>
+            {submitting ? "Registering..." : "Register patient"}
+          </PrimaryButton>
+        </form>
+      </Card>
     </div>
   );
 }

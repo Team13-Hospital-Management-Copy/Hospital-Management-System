@@ -4,6 +4,10 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
+import { Card } from "@/components/Card";
+import { FormField } from "@/components/FormField";
+import { PrimaryButton } from "@/components/Button";
+import { ErrorAlert } from "@/components/Alert";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -32,51 +36,34 @@ export default function LoginPage() {
       <h1 className="mb-1 text-2xl font-semibold text-slate-900">Staff login</h1>
       <p className="mb-6 text-sm text-slate-500">US-01: secure staff login with account lockout.</p>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="username">
-            Username
-          </label>
-          <input
-            id="username"
-            type="text"
-            required
-            autoFocus
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="password">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
+      <Card>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <FormField label="Username" value={username} onChange={setUsername} required />
+          <FormField label="Password" type="password" value={password} onChange={setPassword} required />
 
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <ErrorAlert message={error} />}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
-          {submitting ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+          <PrimaryButton type="submit" disabled={submitting}>
+            {submitting ? "Signing in..." : "Sign in"}
+          </PrimaryButton>
+        </form>
+      </Card>
 
-      <p className="mt-4 text-xs text-slate-400">
-        Demo accounts: <code>admin1</code> / <code>Admin#12345</code> (Administrator) and{" "}
-        <code>reception1</code> / <code>Reception#12345</code> (Receptionist). Seed them with{" "}
-        <code>python -m scripts.seed_demo_users</code> from <code>backend/</code>.
-      </p>
+      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+        <p className="font-medium text-slate-600">Demo accounts</p>
+        <p className="mt-1">
+          <code className="font-mono">admin1</code> / <code className="font-mono">Admin#12345</code>{" "}
+          (Administrator)
+        </p>
+        <p>
+          <code className="font-mono">reception1</code> / <code className="font-mono">Reception#12345</code>{" "}
+          (Receptionist)
+        </p>
+        <p className="mt-1">
+          Seed them with <code className="font-mono">python -m scripts.seed_demo_users</code> from{" "}
+          <code className="font-mono">backend/</code>.
+        </p>
+      </div>
     </div>
   );
 }

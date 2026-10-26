@@ -13,6 +13,9 @@ import {
   type NotificationOut,
 } from "@/lib/api";
 import { ErrorAlert, SuccessAlert } from "@/components/Alert";
+import { Card } from "@/components/Card";
+import { FormField } from "@/components/FormField";
+import { PrimaryButton } from "@/components/Button";
 
 function tomorrow(): string {
   const d = new Date();
@@ -99,47 +102,47 @@ export default function BookAppointmentPage() {
             {new Date(appointment.slot_start).toLocaleString()}.
           </SuccessAlert>
           {notifications.length > 0 && (
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <Card>
               <h2 className="text-sm font-medium text-slate-700">Notifications sent</h2>
-              <ul className="mt-2 space-y-1 text-sm text-slate-600">
+              <ul className="mt-2 divide-y divide-slate-100 text-sm text-slate-600">
                 {notifications.map((n) => (
-                  <li key={n.id} className="flex items-center justify-between">
+                  <li key={n.id} className="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
                     <span>
                       {n.kind} via {n.channel}
                     </span>
                     <span
-                      className={
-                        n.status === "SENT" ? "font-medium text-emerald-600" : "font-medium text-amber-600"
-                      }
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        n.status === "SENT"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-amber-50 text-amber-700"
+                      }`}
                     >
                       {n.status}
                     </span>
                   </li>
                 ))}
               </ul>
-            </div>
+            </Card>
           )}
         </div>
       )}
 
-      <div className="mt-6 space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Patient UHID</label>
-          <input
-            required
-            placeholder="HMS-000001"
-            value={patientUhid}
-            onChange={(e) => setPatientUhid(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono focus:border-slate-500 focus:outline-none"
-          />
-        </div>
+      <Card className="mt-6 space-y-4">
+        <FormField
+          label="Patient UHID"
+          placeholder="HMS-000001"
+          value={patientUhid}
+          onChange={setPatientUhid}
+          required
+          mono
+        />
 
         <div>
           <label className="block text-sm font-medium text-slate-700">Doctor</label>
           <select
             value={doctorId}
             onChange={(e) => setDoctorId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           >
             {doctors.length === 0 && <option value="">No doctors yet - set one up first</option>}
             {doctors.map((d) => (
@@ -150,15 +153,7 @@ export default function BookAppointmentPage() {
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Day</label>
-          <input
-            type="date"
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
+        <FormField label="Day" type="date" value={day} onChange={setDay} />
 
         <div>
           <label className="block text-sm font-medium text-slate-700">Available slots</label>
@@ -172,10 +167,10 @@ export default function BookAppointmentPage() {
                 key={slot}
                 type="button"
                 onClick={() => setSelectedSlot(slot)}
-                className={`rounded-md border px-3 py-1.5 text-sm ${
+                className={`rounded-lg border px-3 py-1.5 text-sm transition ${
                   selectedSlot === slot
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-slate-300 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
                 }`}
               >
                 {new Date(slot).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -186,15 +181,14 @@ export default function BookAppointmentPage() {
 
         {error && <ErrorAlert message={error} />}
 
-        <button
+        <PrimaryButton
           type="button"
           disabled={submitting || !patientUhid || !doctorId || !selectedSlot}
           onClick={handleBook}
-          className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
           {submitting ? "Booking..." : "Book appointment"}
-        </button>
-      </div>
+        </PrimaryButton>
+      </Card>
     </div>
   );
 }

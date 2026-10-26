@@ -4,6 +4,9 @@ import { useState, type FormEvent } from "react";
 import { useRequireAuth } from "@/lib/auth-context";
 import { ApiError, createDoctor, type DoctorOut, type ScheduleBlock } from "@/lib/api";
 import { ErrorAlert, SuccessAlert } from "@/components/Alert";
+import { Card } from "@/components/Card";
+import { FormField } from "@/components/FormField";
+import { PrimaryButton } from "@/components/Button";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -70,91 +73,64 @@ export default function CreateDoctorPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Full name</label>
-          <input
-            required
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Specialization</label>
-            <input
+      <Card className="mt-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <FormField label="Full name" value={fullName} onChange={setFullName} required />
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Specialization" value={specialization} onChange={setSpecialization} required />
+            <FormField label="Department" value={department} onChange={setDepartment} required />
+          </div>
+          <div className="w-32">
+            <FormField
+              label="Slot length (min)"
+              type="number"
+              value={slotMinutes}
+              onChange={setSlotMinutes}
               required
-              value={specialization}
-              onChange={(e) => setSpecialization(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              min={5}
+              max={120}
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-700">Department</label>
-            <input
-              required
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            />
+            <label className="block text-sm font-medium text-slate-700">Weekly schedule</label>
+            {schedule.map((block, index) => (
+              <div key={index} className="mt-2 flex items-center gap-2">
+                <select
+                  value={block.weekday}
+                  onChange={(e) => updateBlock(index, { weekday: Number(e.target.value) })}
+                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                >
+                  {WEEKDAYS.map((day, i) => (
+                    <option key={day} value={i}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="time"
+                  value={block.start_time}
+                  onChange={(e) => updateBlock(index, { start_time: e.target.value })}
+                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+                <span className="text-slate-400">to</span>
+                <input
+                  type="time"
+                  value={block.end_time}
+                  onChange={(e) => updateBlock(index, { end_time: e.target.value })}
+                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+            ))}
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Slot length (minutes)</label>
-          <input
-            type="number"
-            min={5}
-            max={120}
-            required
-            value={slotMinutes}
-            onChange={(e) => setSlotMinutes(e.target.value)}
-            className="mt-1 w-32 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Weekly schedule</label>
-          {schedule.map((block, index) => (
-            <div key={index} className="mt-2 flex items-center gap-2">
-              <select
-                value={block.weekday}
-                onChange={(e) => updateBlock(index, { weekday: Number(e.target.value) })}
-                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-              >
-                {WEEKDAYS.map((day, i) => (
-                  <option key={day} value={i}>
-                    {day}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="time"
-                value={block.start_time}
-                onChange={(e) => updateBlock(index, { start_time: e.target.value })}
-                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-              />
-              <span className="text-slate-400">to</span>
-              <input
-                type="time"
-                value={block.end_time}
-                onChange={(e) => updateBlock(index, { end_time: e.target.value })}
-                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-              />
-            </div>
-          ))}
-        </div>
+          {error && <ErrorAlert message={error} />}
 
-        {error && <ErrorAlert message={error} />}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
-          {submitting ? "Creating..." : "Create doctor"}
-        </button>
-      </form>
+          <PrimaryButton type="submit" disabled={submitting}>
+            {submitting ? "Creating..." : "Create doctor"}
+          </PrimaryButton>
+        </form>
+      </Card>
     </div>
   );
 }
