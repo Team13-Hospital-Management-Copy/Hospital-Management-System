@@ -9,7 +9,7 @@ from .rbac import issue_token, revoke_current_token
 from .schemas import LoginRequest, LoginResponse, LogoutResponse
 from .security import verify_password
 
-router = APIRouter()
+router = APIRouter(tags=["Auth"])
 
 # AC-HMS-F-004: lock the account after 5 consecutive failed attempts.
 MAX_FAILED_ATTEMPTS = 5
@@ -25,7 +25,7 @@ def _log(db: Session, event_type: str, username: str, detail: str = "") -> None:
     db.add(AuditLogEntry(event_type=event_type, username=username, detail=detail))
 
 
-@router.post("/auth/login", response_model=LoginResponse)
+@router.post("/auth/login", response_model=LoginResponse, summary="Staff login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
     user = db.query(User).filter(User.username == payload.username).one_or_none()
 
@@ -72,7 +72,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, GENERIC_INVALID_CREDENTIALS_MESSAGE)
 
 
-@router.post("/auth/logout", response_model=LogoutResponse)
+@router.post("/auth/logout", response_model=LogoutResponse, summary="Staff logout")
 def logout(request: Request, db: Session = Depends(get_db)) -> LogoutResponse:
     revoke_current_token(request, db)
     return LogoutResponse(status="ok", message="Logged out.")

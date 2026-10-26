@@ -13,7 +13,7 @@ from .roles import ADMINISTRATOR, SYSTEM_ADMINISTRATOR
 
 logger = logging.getLogger("hms.notifications")
 
-router = APIRouter()
+router = APIRouter(tags=["Notifications"])
 
 # AC-HMS-F-008: a reminder is sent 24 hours before the appointment.
 REMINDER_LEAD_TIME = timedelta(hours=24)
@@ -195,7 +195,7 @@ def dispatch_due_notifications(db: Session, gateway: NotificationGateway, now: d
     return sent
 
 
-@router.post("/notifications/dispatch-due")
+@router.post("/notifications/dispatch-due", summary="Dispatch due notifications")
 def dispatch_due(
     db: Session = Depends(get_db),
     gateway: NotificationGateway = Depends(get_gateway),
@@ -205,7 +205,9 @@ def dispatch_due(
     return {"sent": dispatch_due_notifications(db, gateway)}
 
 
-@router.get("/appointments/{appointment_id}/notifications")
+@router.get(
+    "/appointments/{appointment_id}/notifications", summary="List notifications for an appointment"
+)
 def list_notifications(
     appointment_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)
 ) -> list[dict]:

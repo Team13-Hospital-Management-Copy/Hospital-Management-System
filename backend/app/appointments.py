@@ -22,7 +22,7 @@ from .schemas import AppointmentCreate, AppointmentOut, AppointmentReschedule
 # HMS-F-005/006/007: a patient or receptionist creates, cancels or reschedules appointments.
 BOOKING_ROLES = (RECEPTIONIST, PATIENT)
 
-router = APIRouter()
+router = APIRouter(tags=["Appointments"])
 
 SLOT_UNAVAILABLE_MESSAGE = "This time slot is no longer available for the selected doctor."
 DEFAULT_CHANGE_CUTOFF_HOURS = 2.0
@@ -180,7 +180,12 @@ def _http_error(exc: Exception) -> HTTPException:
     return HTTPException(exc.status_code, exc.message)
 
 
-@router.post("/appointments", response_model=AppointmentOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/appointments",
+    response_model=AppointmentOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create an appointment (low-level)",
+)
 def create_appointment(
     payload: AppointmentCreate,
     db: Session = Depends(get_db),
@@ -195,7 +200,7 @@ def create_appointment(
         raise _http_error(exc) from None
 
 
-@router.get("/appointments/booked-slots")
+@router.get("/appointments/booked-slots", summary="List booked slots for a doctor")
 def get_booked_slots(
     doctor_id: str, day: date, db: Session = Depends(get_db), _user: User = Depends(get_current_user)
 ) -> dict:
@@ -203,7 +208,7 @@ def get_booked_slots(
     return {"doctor_id": doctor_id, "day": day, "booked": booked_slots(db, doctor_id, day)}
 
 
-@router.get("/appointments/{appointment_id}", response_model=AppointmentOut)
+@router.get("/appointments/{appointment_id}", response_model=AppointmentOut, summary="Get an appointment")
 def get_appointment(
     appointment_id: int, db: Session = Depends(get_db), _user: User = Depends(get_current_user)
 ) -> Appointment:
@@ -213,7 +218,9 @@ def get_appointment(
     return appointment
 
 
-@router.post("/appointments/{appointment_id}/cancel", response_model=AppointmentOut)
+@router.post(
+    "/appointments/{appointment_id}/cancel", response_model=AppointmentOut, summary="Cancel an appointment"
+)
 def cancel(
     appointment_id: int,
     db: Session = Depends(get_db),
@@ -226,7 +233,11 @@ def cancel(
         raise _http_error(exc) from None
 
 
-@router.post("/appointments/{appointment_id}/reschedule", response_model=AppointmentOut)
+@router.post(
+    "/appointments/{appointment_id}/reschedule",
+    response_model=AppointmentOut,
+    summary="Reschedule an appointment",
+)
 def reschedule(
     appointment_id: int,
     payload: AppointmentReschedule,

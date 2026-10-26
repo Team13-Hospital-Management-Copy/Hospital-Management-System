@@ -45,7 +45,24 @@ async def lifespan(_: FastAPI):
             await task
 
 
-app = FastAPI(title="Hospital Management System API", lifespan=lifespan)
+app = FastAPI(
+    title="Hospital Management System API",
+    description=(
+        "Team 13's secure clinical workflow API: staff login and role-based access control, "
+        "patient registration, doctor scheduling, and OPD appointment booking with automatic "
+        "confirmations and reminders."
+    ),
+    version="1.0.0",
+    openapi_tags=[
+        {"name": "Auth", "description": "Staff login, logout and session management."},
+        {"name": "Patients", "description": "Patient registration, search and record lookup."},
+        {"name": "Doctors", "description": "Doctor profiles, schedules and slot availability."},
+        {"name": "Appointments", "description": "Booking, rescheduling and cancelling appointments."},
+        {"name": "Notifications", "description": "Appointment confirmations and reminders."},
+        {"name": "Admin", "description": "Administrative and audit-log endpoints."},
+    ],
+    lifespan=lifespan,
+)
 app.add_middleware(HttpsOnlyMiddleware)
 app.include_router(auth_router)
 app.include_router(admin_router)

@@ -6,10 +6,10 @@ from .models import AuditLogEntry
 from .rbac import require_role
 from .roles import ADMINISTRATOR, SYSTEM_ADMINISTRATOR
 
-router = APIRouter()
+router = APIRouter(tags=["Admin"])
 
 
-@router.get("/admin/audit-log")
+@router.get("/admin/audit-log", summary="View audit log")
 def list_audit_log(
     db: Session = Depends(get_db),
     _user=Depends(require_role(ADMINISTRATOR, SYSTEM_ADMINISTRATOR)),
