@@ -31,7 +31,25 @@ uvicorn app.main:app --reload
 By default this uses a local SQLite file (`hms.db`). Set `DATABASE_URL` to point at a real
 RDBMS (e.g. `postgresql://user:pass@host/dbname?sslmode=verify-full`) for anything beyond local
 development, per SRS §3.3. A networked database URL must force TLS or the app refuses to start
-(US-02, see below).
+(US-02, see below); for a local Postgres with no TLS set up, set `REQUIRE_DB_TLS=0` as well
+(local/dev only - never in production).
+
+```bash
+# one-time local Postgres setup
+sudo -u postgres psql -c "CREATE ROLE hms_app WITH LOGIN PASSWORD 'hms_dev_password' CREATEDB;"
+sudo -u postgres createdb -O hms_app hms
+
+DATABASE_URL=postgresql://hms_app:hms_dev_password@localhost/hms REQUIRE_DB_TLS=0 uvicorn app.main:app --reload
+```
+
+### Demo accounts for the frontend UI
+
+There's no self-service staff registration (staff accounts are provisioned by an
+administrator - see US-19, not yet built), so `../frontend` needs two seeded accounts first:
+
+```bash
+python -m scripts.seed_demo_users
+```
 
 ### Run over HTTPS (TLS 1.2+, US-02)
 

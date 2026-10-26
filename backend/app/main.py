@@ -5,6 +5,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .admin import router as admin_router
 from .appointments import router as appointments_router
@@ -64,6 +65,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(HttpsOnlyMiddleware)
+
+# The Next.js frontend (US-01..US-08 demo UI) runs on a different origin in dev; allow it to call
+# this API. Overridable via CORS_ALLOWED_ORIGINS (comma-separated) for other environments.
+_cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(booking_router)
