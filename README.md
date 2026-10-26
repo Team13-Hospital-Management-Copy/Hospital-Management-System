@@ -81,14 +81,13 @@ The project testing plan covers:
 
 ## Installation and Setup
 
-Setup instructions will be added once the implementation technology and project structure are finalized.
+The backend is a FastAPI app and the frontend is a Next.js app - see each one's README for
+setup:
 
-General steps:
-
-1. Clone this repository.
-2. Install the required dependencies.
-3. Configure the application and database.
-4. Start the application using the project's setup instructions.
+- [`backend/README.md`](backend/README.md) - API setup, running, and database configuration
+  (SQLite for local dev, Postgres/MySQL for anything beyond that).
+- [`frontend/README.md`](frontend/README.md) - demo UI covering Sprint 1 (staff login, doctor
+  setup, patient registration, OPD appointment booking).
 
 ## Project Team
 
