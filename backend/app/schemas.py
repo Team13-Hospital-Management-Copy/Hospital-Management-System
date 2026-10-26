@@ -1,3 +1,4 @@
+
 from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -58,7 +59,7 @@ class AppointmentOut(BaseModel):
     rescheduled_count: int
 
 
-# --- Doctor management (US-07) ---------------------------------------------------------------
+# --- Doctor management (US-07) -----------------------------------------------
 
 
 class ScheduleBlock(BaseModel):
@@ -105,7 +106,7 @@ class AvailableSlots(BaseModel):
     available: list[datetime]
 
 
-# --- OPD booking (US-08) -----------------------------------------------------------------------
+# --- OPD booking (US-08) ------------------------------------------------------
 
 
 class OpdBookingRequest(BaseModel):
@@ -113,3 +114,31 @@ class OpdBookingRequest(BaseModel):
     doctor_id: str = Field(min_length=1, max_length=20)
     department: str | None = Field(default=None, max_length=100)
     slot_start: datetime
+
+
+# --- Clinical consultation schemas (US-12) -----------------------------------
+
+
+class ConsultationCreate(BaseModel):
+    appointment_id: int = Field(gt=0)
+    diagnosis: str = Field(min_length=1, max_length=200)
+    blood_pressure: str | None = Field(default=None, max_length=20)
+    temperature: str | None = Field(default=None, max_length=20)
+    pulse: int | None = Field(default=None, ge=0, le=300)
+    spo2: int | None = Field(default=None, ge=0, le=100)
+    clinical_notes: str = Field(default="", max_length=2000)
+
+
+class ConsultationOut(BaseModel):
+    id: int
+    appointment_id: int
+    patient_uhid: str
+    diagnosis: str
+    blood_pressure: str | None
+    temperature: str | None
+    pulse: int | None
+    spo2: int | None
+    clinical_notes: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
