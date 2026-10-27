@@ -14,6 +14,7 @@ export default function RegisterPatientPage() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -32,6 +33,7 @@ export default function RegisterPatientPage() {
         age: Number(age),
         gender,
         phone,
+        email,
         address,
       });
       setPatient(created);
@@ -39,6 +41,7 @@ export default function RegisterPatientPage() {
       setAge("");
       setGender("");
       setPhone("");
+      setEmail("");
       setAddress("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not reach the server.");
@@ -79,6 +82,14 @@ export default function RegisterPatientPage() {
             <FormField label="Gender" value={gender} onChange={setGender} required accent="teal" />
           </div>
           <FormField label="Phone" value={phone} onChange={setPhone} required accent="teal" />
+          <FormField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            required
+            accent="teal"
+          />
           <FormField label="Address" value={address} onChange={setAddress} accent="teal" />
 
           {error && <ErrorAlert message={error} />}

@@ -1,7 +1,7 @@
 
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -25,6 +25,7 @@ class PatientCreate(BaseModel):
     age: int = Field(ge=0, le=130)
     gender: str = Field(min_length=1, max_length=20)
     phone: str = Field(min_length=7, max_length=20)
+    email: EmailStr | None = None
     address: str = Field(default="", max_length=300)
 
 
@@ -35,6 +36,7 @@ class PatientResponse(BaseModel):
     age: int
     gender: str
     phone: str
+    email: EmailStr | None
     address: str
 
 

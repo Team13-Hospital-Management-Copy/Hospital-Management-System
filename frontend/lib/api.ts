@@ -61,6 +61,7 @@ export interface PatientCreate {
   age: number;
   gender: string;
   phone: string;
+  email?: string;
   address?: string;
 }
 

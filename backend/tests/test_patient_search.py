@@ -120,7 +120,7 @@ def test_search_result_contains_the_patient_fields(client, seed_user, login_toke
 
     assert response.status_code == 200
     (patient,) = response.json()
-    assert set(patient) == {"id", "uhid", "full_name", "age", "gender", "phone", "address"}
+    assert set(patient) == {"id", "uhid", "full_name", "age", "gender", "phone", "email", "address"}
     assert patient["full_name"] == "Mohan Das"
     assert patient["age"] == 45
     assert patient["gender"] == "Male"

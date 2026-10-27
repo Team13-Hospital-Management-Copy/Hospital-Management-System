@@ -213,6 +213,15 @@ Errors:
 | --- | --- | --- |
 | `APPOINTMENT_CHANGE_CUTOFF_HOURS` | `2` | Reschedule/cancel is refused when the slot is closer than this (US-10). |
 | `NOTIFICATION_CHANNELS` | `SMS,EMAIL` | Channels each notification is sent on (US-11). |
+| `SMTP_HOST` | none | SMTP server used for real e-mail delivery. E-mail sends fail visibly until configured. |
+| `SMTP_PORT` | `587` | SMTP server port. |
+| `SMTP_USERNAME` | none | SMTP login username; omit only for a server that permits unauthenticated delivery. |
+| `SMTP_PASSWORD` | none | SMTP password or provider app password. Never commit this value. |
+| `SMTP_FROM` | `SMTP_USERNAME` | Sender address shown on appointment e-mails. |
+| `SMTP_USE_STARTTLS` | `1` | Upgrade the SMTP connection with STARTTLS. |
+| `SMTP_USE_SSL` | `0` | Use implicit TLS instead (commonly port 465). |
+| `SMTP_TIMEOUT_SECONDS` | `15` | Network timeout for SMTP delivery. |
+| `SMTP_SUBJECT` | `Hospital appointment update` | Subject used for appointment e-mails. |
 | `REMINDER_DISPATCH_INTERVAL_SECONDS` | `60` | How often the background job sends due reminders; `0` disables it. |
 | `ENFORCE_HTTPS` | `0` (`1` under `app.serve`) | Reject plaintext HTTP requests and send HSTS (US-02). |
 | `TRUST_PROXY_HEADERS` | `0` | Use `X-Forwarded-Proto` from a TLS-terminating proxy (US-02). |
@@ -232,15 +241,14 @@ Errors:
 - Appointment read access isn't scoped to "your own appointment" — any logged-in receptionist,
   patient or doctor can look up any appointment by ID. Enforcing per-patient ownership would need
   a patient-to-user link that doesn't exist yet.
-- TLS for external services (SMS/e-mail gateway, LIS, payment gateway) must be checked when those
-  integrations are built; they are still mocks today.
+- TLS for the SMS gateway, LIS, and payment gateway must be checked when those integrations are built.
 - `uvicorn app.main:app` (plain HTTP) is still the quickest way to develop locally; use
   `python -m app.serve` for anything that handles real data.
-- **Notifications use a mock gateway** (`MockNotificationGateway`): messages are logged and stored,
-  not actually delivered, because no SMS/e-mail gateway is available yet (playbook §9 risk for US-11).
-  Plug in a real one by overriding the `get_gateway` dependency.
-- Until US-05 (Patient Registration) exposes phone/e-mail, notifications are addressed to the
-  patient's UHID.
+- E-mail notifications are delivered through SMTP when the variables above are configured. SMTP
+  errors are stored as `FAILED` and retried up to three times; they are never reported as sent merely
+  because they were written to the database. SMS still needs a real provider integration.
+- Patient registration accepts an e-mail address and uses it for e-mail notifications. Older API
+  clients may omit it, but those patients' e-mail sends fail until an address is added.
 - If a booking is made less than 24h ahead, only the confirmation is sent (no separate reminder).
 - The cutoff is set by environment variable; making it admin-editable in the UI belongs with US-19.
 - Patient registration retries up to 5 times on a UHID collision (same for doctor IDs); if every

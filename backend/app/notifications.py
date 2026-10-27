@@ -1,13 +1,16 @@
 import logging
 import os
+import smtplib
+import ssl
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 from typing import Protocol
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import Appointment, Notification, User
+from .models import Appointment, Notification, Patient, User
 from .rbac import get_current_user, require_role
 from .roles import ADMINISTRATOR, SYSTEM_ADMINISTRATOR
 
@@ -56,7 +59,56 @@ class MockNotificationGateway:
         logger.info("[MOCK %s] to %s: %s", channel, recipient, message)
 
 
-_gateway = MockNotificationGateway()
+class SmtpNotificationGateway:
+    """Deliver e-mail notifications over an authenticated, encrypted SMTP connection.
+
+    SMS remains logged until an SMS provider is configured. Unlike the old mock, an EMAIL send
+    only succeeds after the SMTP server accepts the message; configuration and network errors are
+    propagated so the notification is stored as FAILED and retried by the dispatcher.
+    """
+
+    def send(self, channel: str, recipient: str, message: str) -> None:
+        if channel != "EMAIL":
+            logger.info("[SMS PROVIDER NOT CONFIGURED] to %s: %s", recipient, message)
+            return
+
+        host = os.environ.get("SMTP_HOST", "").strip()
+        username = os.environ.get("SMTP_USERNAME", "").strip()
+        password = os.environ.get("SMTP_PASSWORD", "")
+        sender = os.environ.get("SMTP_FROM", username).strip()
+        if not host or not sender:
+            raise RuntimeError("Email delivery is not configured: set SMTP_HOST and SMTP_FROM.")
+        if "@" not in recipient:
+            raise RuntimeError("Patient does not have a valid email address.")
+        if username and not password:
+            raise RuntimeError("SMTP_PASSWORD is required when SMTP_USERNAME is set.")
+
+        port = int(os.environ.get("SMTP_PORT", "587"))
+        timeout = float(os.environ.get("SMTP_TIMEOUT_SECONDS", "15"))
+        use_ssl = os.environ.get("SMTP_USE_SSL", "0").lower() in {"1", "true", "yes"}
+        use_starttls = os.environ.get("SMTP_USE_STARTTLS", "1").lower() in {"1", "true", "yes"}
+
+        email = EmailMessage()
+        email["From"] = sender
+        email["To"] = recipient
+        email["Subject"] = os.environ.get("SMTP_SUBJECT", "Hospital appointment update")
+        email.set_content(message)
+
+        context = ssl.create_default_context()
+        connection = (
+            smtplib.SMTP_SSL(host, port, timeout=timeout, context=context)
+            if use_ssl
+            else smtplib.SMTP(host, port, timeout=timeout)
+        )
+        with connection as smtp:
+            if use_starttls and not use_ssl:
+                smtp.starttls(context=context)
+            if username:
+                smtp.login(username, password)
+            smtp.send_message(email)
+
+
+_gateway = SmtpNotificationGateway()
 
 
 def get_gateway() -> NotificationGateway:
@@ -65,6 +117,17 @@ def get_gateway() -> NotificationGateway:
 
 def _format_slot(slot_start: datetime) -> str:
     return slot_start.strftime("%d %b %Y, %H:%M UTC")
+
+
+def _recipient_for(db: Session, appointment: Appointment, channel: str) -> str:
+    patient = db.query(Patient).filter(Patient.uhid == appointment.patient_uhid).one_or_none()
+    if patient is None:
+        return appointment.patient_uhid
+    if channel == "EMAIL":
+        return patient.email or appointment.patient_uhid
+    if channel == "SMS":
+        return patient.phone
+    return appointment.patient_uhid
 
 
 def _deliver(notification: Notification, gateway: NotificationGateway, now: datetime) -> None:
@@ -89,9 +152,7 @@ def _send_now(
             appointment_id=appointment.id,
             kind=kind,
             channel=channel,
-            # Until US-05 (Patient Registration) exposes contact details, the UHID identifies the
-            # recipient and the gateway is responsible for resolving it to a phone number / e-mail.
-            recipient=appointment.patient_uhid,
+            recipient=_recipient_for(db, appointment, channel),
             message=message,
             scheduled_for=now,
         )
@@ -115,7 +176,7 @@ def _schedule_reminders(db: Session, appointment: Appointment, now: datetime) ->
                 appointment_id=appointment.id,
                 kind=KIND_REMINDER,
                 channel=channel,
-                recipient=appointment.patient_uhid,
+                recipient=_recipient_for(db, appointment, channel),
                 message=message,
                 scheduled_for=remind_at,
             )

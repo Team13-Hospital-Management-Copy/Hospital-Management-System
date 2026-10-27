@@ -54,6 +54,7 @@ def register_patient(
             age=payload.age,
             gender=payload.gender.strip(),
             phone=payload.phone.strip(),
+            email=str(payload.email).lower() if payload.email else None,
             address=payload.address.strip(),
         )
         db.add(patient)
