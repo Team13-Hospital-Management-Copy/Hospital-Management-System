@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -50,3 +50,55 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # --- CD: package & publish, only once code actually lands on main, only after CI is green ---
+
+  publish-backend-image:
+    needs: [backend-tests, frontend-checks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/team13-hospital-management-copy/hms-backend:latest
+            ghcr.io/team13-hospital-management-copy/hms-backend:${{ github.sha }}
+
+  publish-frontend-image:
+    needs: [backend-tests, frontend-checks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+          tags: |
+            ghcr.io/team13-hospital-management-copy/hms-frontend:latest
+            ghcr.io/team13-hospital-management-copy/hms-frontend:${{ github.sha }}
