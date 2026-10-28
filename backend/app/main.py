@@ -18,6 +18,7 @@ from .doctors import router as doctors_router
 from .notifications import dispatch_due_notifications, get_gateway
 from .notifications import router as notifications_router
 from .patients import router as patients_router
+from .prescriptions import router as prescriptions_router
 from .staff_accounts import router as staff_accounts_router
 from .tls import HttpsOnlyMiddleware
 
@@ -111,4 +112,5 @@ app.include_router(notifications_router)
 app.include_router(patients_router)
 app.include_router(doctors_router)
 app.include_router(consultations_router)
+app.include_router(prescriptions_router)
 app.include_router(staff_accounts_router)
