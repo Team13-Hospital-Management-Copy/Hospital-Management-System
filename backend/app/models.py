@@ -1,4 +1,3 @@
-
 from datetime import date, datetime, time, timezone
 
 from sqlalchemy import (
@@ -41,7 +40,7 @@ class User(Base):
 
 
 class AuthToken(Base):
-    """Bearer session used for the US-03 idle timeout."""
+    """Bearer session. last_seen_at drives the HMS-SR-005 idle timeout (US-03)."""
 
     __tablename__ = "auth_tokens"
 
@@ -60,9 +59,7 @@ class AuditLogEntry(Base):
     __tablename__ = "audit_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     event_type: Mapped[str] = mapped_column(String(50))
     username: Mapped[str] = mapped_column(String(255))
     detail: Mapped[str] = mapped_column(String(500), default="")
@@ -83,7 +80,7 @@ class Patient(Base):
     )
 
 
-# --- Appointment lifecycle (US-09, US-10, US-11) ----------------------------
+# --- Appointment lifecycle (US-09, US-10, US-11) -----------------------------
 
 APPOINTMENT_STATUS_BOOKED = "BOOKED"
 APPOINTMENT_STATUS_CANCELLED = "CANCELLED"
@@ -106,9 +103,7 @@ class Appointment(Base):
     patient_uhid: Mapped[str] = mapped_column(String(64), index=True)
     doctor_id: Mapped[str] = mapped_column(String(64), index=True)
     slot_start: Mapped[datetime] = mapped_column(DateTime)
-    status: Mapped[str] = mapped_column(
-        String(20), default=APPOINTMENT_STATUS_BOOKED
-    )
+    status: Mapped[str] = mapped_column(String(20), default=APPOINTMENT_STATUS_BOOKED)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: _utcnow().replace(tzinfo=None)
     )
@@ -134,7 +129,7 @@ class Notification(Base):
     last_error: Mapped[str] = mapped_column(String(500), default="")
 
 
-# --- Doctor management (US-07) ----------------------------------------------
+# --- Doctor management (US-07) -----------------------------------------------
 
 
 class Doctor(Base):
@@ -153,8 +148,6 @@ class Doctor(Base):
 
 
 class DoctorScheduleBlock(Base):
-    """One block of a doctor's weekly OPD schedule."""
-
     __tablename__ = "doctor_schedule_blocks"
     __table_args__ = (
         UniqueConstraint(
@@ -172,7 +165,7 @@ class DoctorScheduleBlock(Base):
     end_time: Mapped[time] = mapped_column(Time)
 
 
-# --- Clinical consultation records (US-12) ----------------------------------
+# --- Consultations ------------------------------------------------------------
 
 
 class Consultation(Base):
@@ -191,6 +184,36 @@ class Consultation(Base):
     pulse: Mapped[int | None] = mapped_column(Integer, nullable=True)
     spo2: Mapped[int | None] = mapped_column(Integer, nullable=True)
     clinical_notes: Mapped[str] = mapped_column(String(2000), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: _utcnow().replace(tzinfo=None)
+    )
+
+
+# --- Electronic prescriptions (US-13) ----------------------------------------
+
+
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Link the prescription to the correct patient and consultation.
+    patient_uhid: Mapped[str] = mapped_column(
+        String(20), ForeignKey("patients.uhid"), index=True
+    )
+    consultation_id: Mapped[int] = mapped_column(
+        ForeignKey("consultations.id"), index=True
+    )
+
+    # Record which doctor created the prescription.
+    doctor_username: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # Required medication details.
+    drug_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    dosage: Mapped[str] = mapped_column(String(100), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(100), nullable=False)
+    duration: Mapped[str] = mapped_column(String(100), nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: _utcnow().replace(tzinfo=None)
     )
