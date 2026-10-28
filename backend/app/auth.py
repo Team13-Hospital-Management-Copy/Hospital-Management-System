@@ -19,6 +19,7 @@ ACCOUNT_LOCKED_MESSAGE = (
     "Account is locked due to repeated failed login attempts. "
     "Contact an administrator to restore access."
 )
+ACCOUNT_DEACTIVATED_MESSAGE = "This account has been deactivated. Contact an administrator."
 
 
 def _log(db: Session, event_type: str, username: str, detail: str = "") -> None:
@@ -40,6 +41,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
         _log(db, "LOGIN_BLOCKED_LOCKED_ACCOUNT", user.username)
         db.commit()
         raise HTTPException(status.HTTP_423_LOCKED, ACCOUNT_LOCKED_MESSAGE)
+
+    if not user.is_active:
+        # AC-HMS-F-019: a deactivated account can no longer log in.
+        _log(db, "LOGIN_BLOCKED_DEACTIVATED_ACCOUNT", user.username)
+        db.commit()
+        raise HTTPException(status.HTTP_403_FORBIDDEN, ACCOUNT_DEACTIVATED_MESSAGE)
 
     if verify_password(payload.password, user.password_hash):
         user.failed_login_attempts = 0

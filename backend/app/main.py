@@ -21,6 +21,7 @@ from .notifications import router as notifications_router
 from .patients import router as patients_router
 from .pharmacy import router as pharmacy_router
 from .prescriptions import router as prescriptions_router
+from .staff_accounts import router as staff_accounts_router
 from .tls import HttpsOnlyMiddleware
 
 
@@ -88,6 +89,10 @@ app = FastAPI(
             "description": "Appointment confirmations and reminders.",
         },
         {"name": "Admin", "description": "Administrative and audit-log endpoints."},
+        {
+            "name": "Staff Administration",
+            "description": "Create, modify and deactivate staff accounts and roles.",
+        },
     ],
     lifespan=lifespan,
 )
@@ -123,3 +128,4 @@ app.include_router(consultations_router)
 app.include_router(lab_tests_router)
 app.include_router(pharmacy_router)
 app.include_router(prescriptions_router)
+app.include_router(staff_accounts_router)

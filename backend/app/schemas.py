@@ -169,7 +169,7 @@ class PrescriptionOut(BaseModel):
     created_at: datetime
 
 
-# --- Lab/radiology test orders (US-14) -----------------------------------------
+# --- Electronic lab/radiology test orders (US-14) ------------------------------
 
 
 class LabTestOrderCreate(BaseModel):
@@ -191,5 +191,30 @@ class LabTestOrderOut(BaseModel):
     result: str | None
     ordered_at: datetime
     completed_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- Staff account & role administration (US-19) -------------------------------
+
+
+class StaffAccountCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=8, max_length=72)
+    role: str
+
+
+class StaffAccountUpdate(BaseModel):
+    role: str | None = None
+    is_active: bool | None = None
+
+
+class StaffAccountOut(BaseModel):
+    id: int
+    username: str
+    role: str
+    is_active: bool
+    is_locked: bool
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
