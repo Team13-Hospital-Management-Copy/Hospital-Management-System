@@ -142,3 +142,29 @@ class ConsultationOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Lab/radiology test orders (US-14) -----------------------------------------
+
+
+class LabTestOrderCreate(BaseModel):
+    appointment_id: int = Field(gt=0)
+    test_name: str = Field(min_length=1, max_length=150)
+
+
+class LabTestResultUpdate(BaseModel):
+    result: str = Field(min_length=1, max_length=2000)
+
+
+class LabTestOrderOut(BaseModel):
+    id: int
+    appointment_id: int
+    patient_uhid: str
+    test_name: str
+    status: str
+    ordered_by: str
+    result: str | None
+    ordered_at: datetime
+    completed_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
