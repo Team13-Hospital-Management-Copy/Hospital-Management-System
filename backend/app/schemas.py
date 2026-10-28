@@ -1,4 +1,4 @@
-
+﻿
 from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -142,6 +142,31 @@ class ConsultationOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Electronic prescriptions (US-13) ----------------------------------------
+
+
+class PrescriptionCreate(BaseModel):
+    consultation_id: int = Field(gt=0)
+    drug_name: str = Field(min_length=1, max_length=200)
+    dosage: str = Field(min_length=1, max_length=100)
+    frequency: str = Field(min_length=1, max_length=100)
+    duration: str = Field(min_length=1, max_length=100)
+
+
+class PrescriptionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    patient_uhid: str
+    consultation_id: int
+    doctor_username: str
+    drug_name: str
+    dosage: str
+    frequency: str
+    duration: str
+    created_at: datetime
 
 
 # --- Lab/radiology test orders (US-14) -----------------------------------------
