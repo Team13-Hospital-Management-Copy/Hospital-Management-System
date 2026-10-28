@@ -89,6 +89,27 @@ setup:
 - [`frontend/README.md`](frontend/README.md) - demo UI covering Sprint 1 (staff login, doctor
   setup, patient registration, OPD appointment booking).
 
+Or run both together with Docker:
+
+```bash
+docker-compose up --build
+```
+
+This builds and starts both services (backend on :8000, frontend on :3000), with the SQLite
+database persisted in a named volume across restarts.
+
+## CI/CD
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push/PR to `main`:
+
+- **CI** - backend tests (`pytest`) and frontend checks (lint, type-check, build).
+- **CD** - once code lands on `main` *and* CI is green, builds and publishes versioned Docker
+  images for both services to GitHub Container Registry
+  (`ghcr.io/team13-hospital-management-copy/hms-backend` and `hms-frontend`, tagged `latest` and
+  by commit SHA). This is continuous *delivery* (an image is always ready to run) rather than
+  continuous *deployment* - nothing automatically runs these images anywhere, since the project
+  has no live hosting target.
+
 ## Project Team
 
 **Team 13 — Section K**

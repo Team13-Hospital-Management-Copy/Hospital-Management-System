@@ -223,6 +223,34 @@ class Prescription(Base):
     )
 
 
+# --- Lab/radiology test orders (US-14) ---------------------------------------
+
+LAB_TEST_STATUS_ORDERED = "ORDERED"
+LAB_TEST_STATUS_COMPLETED = "COMPLETED"
+
+
+class LabTestOrder(Base):
+    """AC-HMS-F-011: a test order moves Ordered -> Completed with results attached."""
+
+    __tablename__ = "lab_test_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    appointment_id: Mapped[int] = mapped_column(
+        ForeignKey("appointments.id"), index=True
+    )
+    patient_uhid: Mapped[str] = mapped_column(
+        String(20), ForeignKey("patients.uhid"), index=True
+    )
+    test_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default=LAB_TEST_STATUS_ORDERED)
+    ordered_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    result: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    ordered_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: _utcnow().replace(tzinfo=None)
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 # --- Pharmacy inventory and dispensing (US-18) -------------------------------
 
 

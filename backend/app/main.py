@@ -15,6 +15,7 @@ from .booking import router as booking_router
 from .consultations import router as consultations_router
 from .database import Base, SessionLocal, engine
 from .doctors import router as doctors_router
+from .lab_tests import router as lab_tests_router
 from .notifications import dispatch_due_notifications, get_gateway
 from .notifications import router as notifications_router
 from .patients import router as patients_router
@@ -73,6 +74,10 @@ app = FastAPI(
             "description": "Clinical diagnoses, vital signs, and consultation notes.",
         },
         {
+            "name": "Lab Tests",
+            "description": "Ordering laboratory/radiology tests and recording their results.",
+        },
+        {
             "name": "Pharmacy",
             "description": (
                 "Medicine batch inventory, dispensing, stock decrement, "
@@ -120,6 +125,7 @@ app.include_router(notifications_router)
 app.include_router(patients_router)
 app.include_router(doctors_router)
 app.include_router(consultations_router)
+app.include_router(lab_tests_router)
 app.include_router(pharmacy_router)
 app.include_router(prescriptions_router)
 app.include_router(staff_accounts_router)
