@@ -18,6 +18,7 @@ from .doctors import router as doctors_router
 from .notifications import dispatch_due_notifications, get_gateway
 from .notifications import router as notifications_router
 from .patients import router as patients_router
+from .pharmacy import router as pharmacy_router
 from .tls import HttpsOnlyMiddleware
 
 
@@ -53,8 +54,8 @@ app = FastAPI(
     title="Hospital Management System API",
     description=(
         "Team 13's secure clinical workflow API: staff login and role-based access control, "
-        "patient registration, doctor scheduling, and OPD appointment booking with automatic "
-        "confirmations and reminders."
+        "patient registration, doctor scheduling, OPD appointment booking, clinical "
+        "consultations, and pharmacy inventory and dispensing."
     ),
     version="1.0.0",
     openapi_tags=[
@@ -70,6 +71,13 @@ app = FastAPI(
             "description": "Clinical diagnoses, vital signs, and consultation notes.",
         },
         {
+            "name": "Pharmacy",
+            "description": (
+                "Medicine batch inventory, dispensing, stock decrement, "
+                "low-stock flags, and expiry alerts."
+            ),
+        },
+        {
             "name": "Notifications",
             "description": "Appointment confirmations and reminders.",
         },
@@ -80,8 +88,8 @@ app = FastAPI(
 
 app.add_middleware(HttpsOnlyMiddleware)
 
-# The Next.js frontend (US-01..US-08 demo UI) runs on a different origin in dev; allow it to call
-# this API. Overridable via CORS_ALLOWED_ORIGINS (comma-separated) for other environments.
+# The Next.js frontend runs on a different origin in development.
+# Override using CORS_ALLOWED_ORIGINS (comma-separated) when required.
 _cors_origins = [
     origin.strip()
     for origin in os.environ.get(
@@ -106,3 +114,4 @@ app.include_router(notifications_router)
 app.include_router(patients_router)
 app.include_router(doctors_router)
 app.include_router(consultations_router)
+app.include_router(pharmacy_router)

@@ -1,3 +1,4 @@
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -22,7 +23,11 @@ def db_session():
         poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    TestingSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+    )
 
     def override_get_db():
         db = TestingSessionLocal()
@@ -53,7 +58,11 @@ def seed_user(db_session):
         password: str = "CorrectHorseBattery9!",
         role: str = RECEPTIONIST,
     ):
-        user = User(username=username, password_hash=hash_password(password), role=role)
+        user = User(
+            username=username,
+            password_hash=hash_password(password),
+            role=role,
+        )
         db_session.add(user)
         db_session.commit()
         db_session.refresh(user)
@@ -64,8 +73,14 @@ def seed_user(db_session):
 
 @pytest.fixture()
 def login_token(client):
-    def _login(username: str, password: str = "CorrectHorseBattery9!") -> str:
-        response = client.post("/auth/login", json={"username": username, "password": password})
+    def _login(
+        username: str,
+        password: str = "CorrectHorseBattery9!",
+    ) -> str:
+        response = client.post(
+            "/auth/login",
+            json={"username": username, "password": password},
+        )
         assert response.status_code == 200, response.text
         return response.json()["token"]
 
@@ -74,19 +89,14 @@ def login_token(client):
 
 @pytest.fixture()
 def receptionist_header(seed_user, login_token):
-    """A ready-to-use Authorization header for a RECEPTIONIST user.
-
-    Most writes (patient registration, appointment booking) require RECEPTIONIST or PATIENT;
-    this covers the common case so tests that aren't specifically about role enforcement don't
-    each have to seed and log in a user themselves.
-    """
     seed_user()
-    return {"Authorization": f"Bearer {login_token('receptionist1')}"}
+    return {
+        "Authorization": f"Bearer {login_token('receptionist1')}"
+    }
 
 
 @pytest.fixture(autouse=True)
 def gateway(db_session):
-    """Fresh mock SMS/e-mail gateway per test, so tests can inspect exactly what was sent."""
     mock = MockNotificationGateway()
     app.dependency_overrides[get_gateway] = lambda: mock
     return mock
