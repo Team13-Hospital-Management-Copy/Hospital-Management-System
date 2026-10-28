@@ -1,7 +1,8 @@
-from datetime import datetime, time, timezone
+from datetime import date, datetime, time, timezone
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -244,3 +245,50 @@ class LabTestOrder(Base):
         DateTime, default=lambda: _utcnow().replace(tzinfo=None)
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+# --- Pharmacy inventory and dispensing (US-18) -------------------------------
+
+
+class MedicineBatch(Base):
+    """A medicine batch with its available stock and expiry date."""
+
+    __tablename__ = "medicine_batches"
+    __table_args__ = (
+        UniqueConstraint(
+            "medicine_name",
+            "batch_number",
+            name="uq_medicine_batch",
+        ),
+        Index("ix_medicine_batches_expiry_date", "expiry_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    medicine_name: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
+    batch_number: Mapped[str] = mapped_column(String(80), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    low_stock_threshold: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=10
+    )
+    expiry_date: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: _utcnow().replace(tzinfo=None)
+    )
+
+
+class PharmacyDispenseRecord(Base):
+    """Records each quantity dispensed from a medicine batch to a patient."""
+
+    __tablename__ = "pharmacy_dispense_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    batch_id: Mapped[int] = mapped_column(
+        ForeignKey("medicine_batches.id"), index=True, nullable=False
+    )
+    patient_uhid: Mapped[str] = mapped_column(
+        ForeignKey("patients.uhid"), index=True, nullable=False
+    )
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    dispensed_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: _utcnow().replace(tzinfo=None)
+    )
