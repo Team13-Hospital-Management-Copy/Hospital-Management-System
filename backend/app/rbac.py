@@ -13,6 +13,7 @@ BEARER_PREFIX = "Bearer "
 ACCESS_DENIED_MESSAGE = "You do not have permission to access this resource."
 INVALID_TOKEN_MESSAGE = "Missing or invalid session token."
 SESSION_EXPIRED_MESSAGE = "Session expired due to inactivity. Please log in again."
+ACCOUNT_DEACTIVATED_MESSAGE = "This account has been deactivated. Contact an administrator."
 
 # AC-HMS-SR-005: an idle session is terminated after 10 minutes of inactivity.
 IDLE_TIMEOUT = timedelta(minutes=10)
@@ -62,6 +63,15 @@ def get_current_user(
     user = db.get(User, auth_token.user_id)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, INVALID_TOKEN_MESSAGE)
+
+    if not user.is_active:
+        # AC-HMS-F-019 says a deactivated account "can no longer log in"; cutting off an
+        # already-open session too (not just blocking future logins) is the safer reading -
+        # otherwise deactivating someone mid-shift wouldn't actually remove their access for
+        # up to IDLE_TIMEOUT. Revoke the token so this isn't re-checked on every request.
+        db.delete(auth_token)
+        db.commit()
+        raise HTTPException(status.HTTP_403_FORBIDDEN, ACCOUNT_DEACTIVATED_MESSAGE)
 
     # Activity resets the idle clock (a sliding timeout, not a fixed session lifetime).
     auth_token.last_seen_at = now
