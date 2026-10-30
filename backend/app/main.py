@@ -15,6 +15,7 @@ from .booking import router as booking_router
 from .consultations import router as consultations_router
 from .database import Base, SessionLocal, engine
 from .doctors import router as doctors_router
+from .ehr import router as ehr_router
 from .lab_tests import router as lab_tests_router
 from .notifications import dispatch_due_notifications, get_gateway
 from .notifications import router as notifications_router
@@ -58,12 +59,19 @@ app = FastAPI(
     description=(
         "Team 13's secure clinical workflow API: staff login and role-based access control, "
         "patient registration, doctor scheduling, OPD appointment booking, clinical "
-        "consultations, and pharmacy inventory and dispensing."
+        "consultations, longitudinal patient EHR, and pharmacy inventory and dispensing."
     ),
     version="1.0.0",
     openapi_tags=[
         {"name": "Auth", "description": "Staff login, logout and session management."},
         {"name": "Patients", "description": "Patient registration, search and record lookup."},
+        {
+            "name": "Patient EHR",
+            "description": (
+                "Chronological patient consultation history, prescriptions, "
+                "and laboratory results."
+            ),
+        },
         {"name": "Doctors", "description": "Doctor profiles, schedules and slot availability."},
         {
             "name": "Appointments",
@@ -123,6 +131,7 @@ app.include_router(booking_router)
 app.include_router(appointments_router)
 app.include_router(notifications_router)
 app.include_router(patients_router)
+app.include_router(ehr_router)
 app.include_router(doctors_router)
 app.include_router(consultations_router)
 app.include_router(lab_tests_router)

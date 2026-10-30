@@ -38,6 +38,52 @@ class PatientResponse(BaseModel):
     address: str
 
 
+# --- Patient Electronic Health Record (US-15) -------------------------------
+
+
+class EHRPrescriptionOut(BaseModel):
+    id: int
+    drug_name: str
+    dosage: str
+    frequency: str
+    duration: str
+    doctor_username: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EHRLabTestOut(BaseModel):
+    id: int
+    test_name: str
+    status: str
+    ordered_by: str
+    result: str | None
+    ordered_at: datetime
+    completed_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EHRVisitOut(BaseModel):
+    appointment_id: int
+    visit_date: datetime
+    doctor_id: str
+    diagnosis: str
+    blood_pressure: str | None
+    temperature: str | None
+    pulse: int | None
+    spo2: int | None
+    clinical_notes: str
+    prescriptions: list[EHRPrescriptionOut] = Field(default_factory=list)
+    lab_tests: list[EHRLabTestOut] = Field(default_factory=list)
+
+
+class PatientEHRResponse(BaseModel):
+    patient: PatientResponse
+    visits: list[EHRVisitOut] = Field(default_factory=list)
+
+
 class AppointmentCreate(BaseModel):
     patient_uhid: str
     doctor_id: str
@@ -85,7 +131,7 @@ class DoctorCreate(BaseModel):
 class DoctorUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=2, max_length=150)
     specialization: str | None = Field(default=None, min_length=2, max_length=100)
-    department: str | None = Field(default=None, min_length=2, max_length=100)
+    department: str | None = Field(default=None, max_length=100)
     slot_minutes: int | None = Field(default=None, ge=5, le=120)
     is_active: bool | None = None
 
