@@ -23,6 +23,7 @@ from .pharmacy import router as pharmacy_router
 from .prescriptions import router as prescriptions_router
 from .staff_accounts import router as staff_accounts_router
 from .tls import HttpsOnlyMiddleware
+from .inpatient import router as inpatient_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -129,3 +130,4 @@ app.include_router(lab_tests_router)
 app.include_router(pharmacy_router)
 app.include_router(prescriptions_router)
 app.include_router(staff_accounts_router)
+app.include_router(inpatient_router)

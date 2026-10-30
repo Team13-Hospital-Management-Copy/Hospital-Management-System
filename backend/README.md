@@ -248,3 +248,29 @@ Errors:
   in practice, but worth knowing if load testing ever hits it.
 - The idle timeout is per-token, not account-wide: logging in on a second device gets a second
   token with its own clock. Nothing stops the same account from having many concurrent sessions.
+
+## US-16: Patient Admission and Discharge
+
+Implemented inpatient admission and bed management functionality.
+
+### Features
+- Create hospital beds with a unique bed number and ward.
+- List beds and identify occupied beds.
+- Admit registered patients to available beds.
+- Prevent two active admissions from using the same bed.
+- Discharge admitted patients and release their beds.
+- Generate a discharge summary containing patient details, diagnosis, treatment, and follow-up instructions.
+- Display a printable HTML discharge summary that can be printed or saved as a PDF through the browser.
+
+### API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/inpatient/beds` | Create a bed |
+| GET | `/inpatient/beds` | List beds, with an optional `available_only` filter |
+| POST | `/inpatient/admissions` | Admit a patient to a bed |
+| POST | `/inpatient/admissions/{admission_id}/discharge` | Confirm discharge and generate the discharge summary |
+| GET | `/inpatient/admissions/{admission_id}/discharge-summary/print` | Display the printable discharge summary |
+
+### Testing
+The US-16 test suite contains eight tests covering bed creation, duplicate bed rejection, patient admission, occupied-bed protection, discharge summary generation, bed release, invalid bed references, duplicate discharge prevention, and printable discharge summaries.

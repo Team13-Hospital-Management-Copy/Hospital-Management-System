@@ -296,3 +296,45 @@ class PharmacyDispenseRecord(Base):
     dispensed_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: _utcnow().replace(tzinfo=None)
     )
+
+# --- Inpatient admission and bed management (US-16) ----------------------------
+
+class Bed(Base):
+    __tablename__ = "beds"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bed_number: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    ward: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class Admission(Base):
+    __tablename__ = "admissions"
+    __table_args__ = (
+        Index(
+            "ix_admissions_active_bed",
+            "bed_id",
+            unique=True,
+            sqlite_where=text("discharged_at IS NULL"),
+            postgresql_where=text("discharged_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    patient_uhid: Mapped[str] = mapped_column(
+        ForeignKey("patients.uhid"), index=True, nullable=False
+    )
+    bed_id: Mapped[int] = mapped_column(
+        ForeignKey("beds.id"), index=True, nullable=False
+    )
+    admitted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    discharged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    diagnosis: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    treatment: Mapped[str] = mapped_column(String(2000), default="", nullable=False)
+    follow_up_instructions: Mapped[str] = mapped_column(
+        String(2000), default="", nullable=False
+    )
