@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import Appointment, Consultation, LabTestOrder, Patient, Prescription
+from .models import AuditLogEntry, Appointment, Consultation, LabTestOrder, Patient, Prescription
 from .rbac import require_role
 from .roles import DOCTOR
 from .schemas import (
@@ -107,6 +107,17 @@ def get_patient_ehr(
         phone=patient.phone,
         address=patient.address,
     )
+
+    # AC-HMS-SR-004 / US-21 verification: every read of an EHR record is audit-logged, not
+    # just writes - this endpoint previously wasn't (found during the US-21 NFR pass).
+    db.add(
+        AuditLogEntry(
+            event_type="EHR_VIEWED",
+            username=current_user.username,
+            detail=f"patient_uhid={uhid}, visits={len(visits)}",
+        )
+    )
+    db.commit()
 
     return PatientEHRResponse(
         patient=patient_response,
