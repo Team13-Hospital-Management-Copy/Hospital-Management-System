@@ -23,6 +23,7 @@ from .notifications import router as notifications_router
 from .patients import router as patients_router
 from .pharmacy import router as pharmacy_router
 from .prescriptions import router as prescriptions_router
+from .reports import router as reports_router
 from .staff_accounts import router as staff_accounts_router
 from .tls import HttpsOnlyMiddleware
 from .inpatient import router as inpatient_router
@@ -107,6 +108,10 @@ app = FastAPI(
             "name": "Billing",
             "description": "Consolidated bills, discounts/insurance adjustments, and payments.",
         },
+        {
+            "name": "Reports",
+            "description": "Operational reports (OPD footfall, revenue, bed occupancy), exportable to PDF/CSV.",
+        },
     ],
     lifespan=lifespan,
 )
@@ -146,3 +151,4 @@ app.include_router(prescriptions_router)
 app.include_router(staff_accounts_router)
 app.include_router(inpatient_router)
 app.include_router(billing_router)
+app.include_router(reports_router)
