@@ -1,5 +1,6 @@
 ﻿
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -264,3 +265,72 @@ class StaffAccountOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Consolidated billing, payments & discounts (US-17) -------------------------
+
+BILL_LINE_CATEGORIES = ("CONSULTATION", "LAB", "PHARMACY", "ROOM", "OTHER")
+
+
+class BillCreate(BaseModel):
+    patient_uhid: str = Field(min_length=1, max_length=20)
+    appointment_id: int | None = Field(default=None, gt=0)
+
+
+class BillLineItemCreate(BaseModel):
+    category: str
+    description: str = Field(min_length=1, max_length=300)
+    amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+
+
+class BillLineItemOut(BaseModel):
+    id: int
+    category: str
+    description: str
+    amount: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DiscountApply(BaseModel):
+    discount_percent: Decimal | None = Field(default=None, ge=0, le=100, decimal_places=2)
+    discount_amount: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    reason: str = Field(default="", max_length=200)
+
+    @model_validator(mode="after")
+    def _exactly_one_discount(self):
+        if (self.discount_percent is None) == (self.discount_amount is None):
+            raise ValueError("Provide exactly one of discount_percent or discount_amount.")
+        return self
+
+
+class PaymentCreate(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    method: str
+
+
+class PaymentOut(BaseModel):
+    id: int
+    amount: Decimal
+    method: str
+    receipt_number: str
+    paid_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BillOut(BaseModel):
+    id: int
+    patient_uhid: str
+    appointment_id: int | None
+    status: str
+    line_items: list[BillLineItemOut]
+    subtotal: Decimal
+    discount_percent: Decimal | None
+    discount_amount: Decimal | None
+    discount_reason: str
+    total: Decimal
+    amount_paid: Decimal
+    balance_due: Decimal
+    payments: list[PaymentOut]
+    created_at: datetime

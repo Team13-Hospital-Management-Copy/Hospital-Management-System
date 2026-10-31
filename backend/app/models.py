@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timezone
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -7,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Time,
     UniqueConstraint,
@@ -337,4 +339,73 @@ class Admission(Base):
     treatment: Mapped[str] = mapped_column(String(2000), default="", nullable=False)
     follow_up_instructions: Mapped[str] = mapped_column(
         String(2000), default="", nullable=False
+    )
+
+
+# --- Consolidated billing, payments & discounts (US-17) -----------------------
+
+BILL_STATUS_OPEN = "OPEN"
+BILL_STATUS_PAID = "PAID"
+
+PAYMENT_METHODS = ("CASH", "CARD", "UPI")
+
+
+class Bill(Base):
+    """One consolidated bill for a visit or admission (AC-HMS-F-014).
+
+    Line items are added individually rather than auto-priced from a consultation/
+    lab test/prescription/dispense record, because none of those models carry a
+    price - there's no pricing catalog in scope. See billing.py for the full note.
+    """
+
+    __tablename__ = "bills"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    patient_uhid: Mapped[str] = mapped_column(
+        ForeignKey("patients.uhid"), index=True, nullable=False
+    )
+    appointment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("appointments.id"), index=True, nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(20), default=BILL_STATUS_OPEN, nullable=False)
+    # AC-HMS-F-016: a discount/insurance scheme applied before final invoice generation.
+    # Exactly one of these is set when a discount has been applied (validated in billing.py).
+    discount_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    discount_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    discount_reason: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: _utcnow().replace(tzinfo=None)
+    )
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class BillLineItem(Base):
+    __tablename__ = "bill_line_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bill_id: Mapped[int] = mapped_column(ForeignKey("bills.id"), index=True, nullable=False)
+    category: Mapped[str] = mapped_column(String(30), nullable=False)
+    description: Mapped[str] = mapped_column(String(300), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: _utcnow().replace(tzinfo=None)
+    )
+
+
+class Payment(Base):
+    """AC-HMS-F-015: a receipt is generated immediately after a payment is recorded.
+
+    Card/UPI are recorded the same way cash is - no real payment gateway is wired in
+    (none is in scope here, same as US-11's notification gateway being mocked).
+    """
+
+    __tablename__ = "payments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bill_id: Mapped[int] = mapped_column(ForeignKey("bills.id"), index=True, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    method: Mapped[str] = mapped_column(String(10), nullable=False)
+    receipt_number: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    paid_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: _utcnow().replace(tzinfo=None)
     )

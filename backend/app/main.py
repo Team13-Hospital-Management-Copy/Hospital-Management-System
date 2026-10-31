@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .admin import router as admin_router
 from .appointments import router as appointments_router
 from .auth import router as auth_router
+from .billing import router as billing_router
 from .booking import router as booking_router
 from .consultations import router as consultations_router
 from .database import Base, SessionLocal, engine
@@ -102,6 +103,10 @@ app = FastAPI(
             "name": "Staff Administration",
             "description": "Create, modify and deactivate staff accounts and roles.",
         },
+        {
+            "name": "Billing",
+            "description": "Consolidated bills, discounts/insurance adjustments, and payments.",
+        },
     ],
     lifespan=lifespan,
 )
@@ -140,3 +145,4 @@ app.include_router(pharmacy_router)
 app.include_router(prescriptions_router)
 app.include_router(staff_accounts_router)
 app.include_router(inpatient_router)
+app.include_router(billing_router)
