@@ -334,3 +334,17 @@ class BillOut(BaseModel):
     balance_due: Decimal
     payments: list[PaymentOut]
     created_at: datetime
+
+
+# --- Operational reports & export (US-20) ---------------------------------------
+
+
+class ReportSummary(BaseModel):
+    start_date: date
+    end_date: date
+    opd_footfall: int
+    revenue: Decimal
+    admissions_in_range: int
+    occupied_bed_days: int
+    available_bed_days: int
+    bed_occupancy_rate: float
