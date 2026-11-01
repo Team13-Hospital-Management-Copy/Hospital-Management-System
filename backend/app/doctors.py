@@ -113,7 +113,7 @@ def available_slots(db: Session, doctor: Doctor, day: date, now: datetime | None
     """Schedule slots that are in the future and not already booked.
 
     Computed live from the current schedule and appointments, so a schedule change or a new
-    booking is reflected in the very next query (US-07 / AC-HMS-F-005).
+    booking is reflected in the very next query (US-07 / AC-HMS-F-009).
     """
     if not doctor.is_active:
         return []

@@ -9,7 +9,7 @@ from .tls import check_database_tls
 # here for local development and tests. Point DATABASE_URL at a real RDBMS to switch.
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./hms.db")
 
-# US-02 / HMS-SR-001: a networked database must be reached over TLS.
+# US-02 / HMS-SR-002: a networked database must be reached over TLS.
 check_database_tls(DATABASE_URL)
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}

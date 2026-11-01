@@ -1,4 +1,7 @@
-"""US-02 / HMS-SR-001 / TC-Sec-01, TC-Sec-02: TLS 1.2+ for client-server and database connections."""
+"""US-02 / HMS-SR-002 (TC-Sec-05), HMS-NF-003 (TC-Sec-01): TLS 1.2+ for client-server and database connections.
+
+Test names keep the original TC-Sec-01/02 labels from Sprint 1; under the SRS v2 numbering the
+client-server checks are TC-Sec-05 and the database checks fall under TC-Sec-01 (HMS-NF-003)."""
 
 import asyncio
 import os

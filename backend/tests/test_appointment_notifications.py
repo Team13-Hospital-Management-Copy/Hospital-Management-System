@@ -1,4 +1,4 @@
-"""US-11 / HMS-F-008 / TC-Appt-04: confirmation within 1 minute of booking, reminder 24h prior."""
+"""US-11 / HMS-F-012 / TC-Apt-04: confirmation within 1 minute of booking, reminder 24h prior."""
 
 from datetime import datetime, timedelta
 

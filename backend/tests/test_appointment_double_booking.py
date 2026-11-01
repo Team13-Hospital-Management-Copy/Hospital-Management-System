@@ -1,4 +1,4 @@
-"""US-09 / HMS-F-006 / TC-Appt-02: prevent double-booking of a doctor's time slot."""
+"""US-09 / HMS-F-010 / TC-Apt-02: prevent double-booking of a doctor's time slot."""
 
 import threading
 from datetime import datetime, timedelta
@@ -100,7 +100,7 @@ def test_booked_slots_endpoint_shows_taken_slots_in_real_time(client, receptioni
 
 
 def test_concurrent_booking_attempts_for_same_slot_result_in_exactly_one_success(tmp_path):
-    # AC-HMS-F-006: fire many booking attempts at the same instant from separate DB sessions.
+    # AC-HMS-F-010: fire many booking attempts at the same instant from separate DB sessions.
     # This calls book_appointment() directly (not over HTTP), so it is unaffected by the RBAC
     # check on the POST /appointments route.
     engine = create_engine(f"sqlite:///{tmp_path / 'race.db'}", connect_args={"timeout": 30})

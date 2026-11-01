@@ -1,4 +1,4 @@
-"""US-17 / HMS-F-014 / HMS-F-015 / HMS-F-016 / TC-Bill-01..03: consolidated billing."""
+"""US-17 / HMS-F-018 / HMS-F-019 / TC-Bill-01..03: consolidated billing."""
 
 from app.models import AuditLogEntry, Patient
 from app.roles import DOCTOR, RECEPTIONIST
@@ -150,7 +150,7 @@ def test_payment_generates_receipt_and_bill_becomes_paid(client, db_session, see
     assert audit is not None
 
 
-def test_partial_payment_leaves_bill_open_with_balance(client, db_session, seed_user, login_token):
+def test_partial_payment_marks_bill_partially_paid_with_balance(client, db_session, seed_user, login_token):
     headers = receptionist_auth(seed_user, login_token)
     seed_patient(db_session)
     bill = open_bill(client, headers)
@@ -163,7 +163,8 @@ def test_partial_payment_leaves_bill_open_with_balance(client, db_session, seed_
     )
 
     data = response.json()
-    assert data["status"] == "OPEN"
+    # HMS-F-019: a valid payment updates the bill status.
+    assert data["status"] == "PARTIALLY_PAID"
     assert data["balance_due"] == "300.00"
 
 

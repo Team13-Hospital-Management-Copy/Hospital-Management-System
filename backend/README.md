@@ -3,15 +3,21 @@
 Minimal FastAPI backend. Currently implements:
 
 - **US-01: Secure Staff Login with Account Lockout** (HMS-F-004, HMS-SR-004, HMS-SR-006)
-- **US-02: Enforce TLS 1.2+ Secure Communication** (HMS-SR-001, HMS-NF-003)
+- **US-02: Enforce TLS 1.2+ Secure Communication** (HMS-SR-002, HMS-NF-003)
 - **US-03: Session Timeout & Secure Logout** (HMS-SR-005)
 - **US-04: Role-Based Access Control (RBAC) Enforcement** (HMS-SR-002)
-- **US-09: Prevent Double-Booking of Appointment Slots** (HMS-F-006)
-- **US-10: Reschedule or Cancel Appointment** (HMS-F-007)
-- **US-11: Appointment Confirmation & Reminder Notifications** (HMS-F-008)
+- **US-09: Prevent Double-Booking of Appointment Slots** (HMS-F-010)
+- **US-10: Reschedule or Cancel Appointment** (HMS-F-011)
+- **US-11: Appointment Confirmation & Reminder Notifications** (HMS-F-012)
 - **US-06: Patient Search & Record Retrieval** (HMS-F-002)
-- **US-07: Doctor Profile & Availability Management** (supports HMS-F-005, HMS-F-006)
-- **US-08: Book OPD Appointment with Real-Time Slot Availability** (HMS-F-005)
+- **US-07: Doctor Profile & Availability Management** (supports HMS-F-007, HMS-F-009)
+- **US-08: Book OPD Appointment with Real-Time Slot Availability** (HMS-F-009)
+- **US-14: Order & Record Lab Test Results** (HMS-F-014)
+- **US-17: Consolidated Billing, Payment Recording & Insurance/Discount** (HMS-F-018, HMS-F-019)
+
+Requirement IDs follow the **SRS v2** (`Team-13_SRS.pdf`, Oct 29). The GitHub issues and the
+Sprint 1 test-result files were written against the first SRS, whose numbers differ (e.g. old
+HMS-F-006 double-booking is now HMS-F-010).
 
 ## Setup
 
@@ -106,10 +112,12 @@ All times are UTC. A `slot_start` with a timezone offset (e.g. `+05:30`) is conv
   schedule. Front ends should use `POST /appointments/opd` (US-08) instead.
 - `GET /appointments/booked-slots?doctor_id=DOC-1&day=2026-10-21` — slots already taken that day.
 - `GET /appointments/{id}` — one appointment.
-- `POST /appointments/{id}/cancel` — cancels and frees the slot. `400` inside the cutoff window,
-  `409` if already cancelled, `404` if unknown.
-- `POST /appointments/{id}/reschedule` — `{"new_slot_start": "..."}`. Moves the same booking (no
-  duplicate row) and frees the old slot. `409` if the new slot is taken, `400` inside the cutoff.
+- `POST /appointments/{id}/cancel` — `RECEPTIONIST`, `PATIENT` or `DOCTOR` token (HMS-F-011).
+  Cancels and frees the slot. `400` inside the cutoff window, `409` if already cancelled, `404` if
+  unknown. Audit-logged with the user.
+- `POST /appointments/{id}/reschedule` — same roles as cancel. `{"new_slot_start": "..."}`. Moves
+  the same booking (no duplicate row) and frees the old slot. `409` if the new slot is taken, `400`
+  inside the cutoff. Audit-logged with the user.
 - `GET /appointments/{id}/notifications` — every confirmation/reminder/cancellation and its status.
 - `POST /notifications/dispatch-due` — sends due reminders and retries failed sends. The server also
   does this automatically in the background.
@@ -146,7 +154,64 @@ Checks, in order: the patient is registered (`404`), the doctor exists (`404`) a
 the doctor is in the chosen department (`422`), and the slot is one the doctor's schedule offers
 (`409`). It then calls `book_appointment()` (US-09), so double-booking protection and the US-11
 confirmation/reminder apply automatically. A booked slot disappears from `available-slots`
-(AC-HMS-F-005). Each booking is audit-logged with the user who made it.
+(AC-HMS-F-009). Each booking is audit-logged with the user who made it.
+
+### Lab tests (US-14)
+
+`DOCTOR` token for all three (there is no lab-technician role in the SRS).
+
+- `POST /lab-tests` — `{"appointment_id": 1, "test_name": "Complete Blood Count"}`. Only for a booked
+  appointment. Status starts as `ORDERED`.
+- `POST /lab-tests/{id}/result` — `{"result": "..."}`. Moves the order to `COMPLETED` with the result
+  attached; a second result is `409`.
+- `GET /lab-tests/{patient_uhid}` — the patient's tests, newest first.
+
+Results are entered by hand: there is no Laboratory Information System connection (playbook §9 risk).
+Ordered tests are picked up by billing consolidation below.
+
+### Billing (US-17)
+
+Bills and payments need a `RECEPTIONIST` token (the SRS's "receptionists or billing staff"). The
+price list and discount schemes are configuration and need an `ADMINISTRATOR`/`SYSTEM_ADMINISTRATOR`
+token to change. Every change is written to the audit log (HMS-SR-004).
+
+**1. Set prices once (admin).** `PUT /billing/tariffs` with `{"category", "item_name", "unit_price"}`:
+
+| category | item_name is... | price is... |
+| --- | --- | --- |
+| `CONSULTATION` | the doctor's department, e.g. `Cardiology` | per consultation |
+| `LAB` | the test name, e.g. `Complete Blood Count` | per test |
+| `PHARMACY` | the medicine name, e.g. `Amlodipine 5mg` | per unit dispensed |
+| `ROOM` | the ward, e.g. `General` | per day (part days round up, minimum 1) |
+
+`item_name: "*"` sets the default price for the whole category. Setting the same item again
+updates its price. `GET /billing/tariffs` lists the prices.
+
+**2. Discount schemes (admin).** `POST /billing/discount-schemes` with `{"name", "discount_percent"}`
+or `{"name", "discount_amount"}`; `GET /billing/discount-schemes`;
+`POST /billing/discount-schemes/{id}/deactivate`.
+
+**3. Bill a visit (receptionist).**
+
+- `POST /billing/bills` — `{"patient_uhid", "appointment_id" (optional), "admission_id" (optional)}`.
+  The visit/admission must belong to that patient (`422`).
+- `POST /billing/bills/{id}/consolidate` — adds everything chargeable that isn't on any bill yet: the
+  appointment's consultation, its lab tests, every medicine dispensed to the patient, and (once the
+  patient is discharged) the admission's bed days. Each line shows quantity × unit price. Safe to call
+  again later: only new charges are added, and a record can never end up on two bills. If anything has
+  no price, nothing is added and `422` lists what needs a price (`detail.missing_prices`). Billing an
+  admission before discharge is `409`.
+- `POST /billing/bills/{id}/items` — add a one-off charge by hand (`category`, `description`, `amount`).
+- `POST /billing/bills/{id}/discount` — `{"scheme_id": 1}` to apply a configured scheme, or a one-off
+  `{"discount_percent" | "discount_amount", "reason"}` (reason required). Not allowed once a payment
+  has been recorded (`409`).
+- `POST /billing/bills/{id}/payments` — `{"amount", "method": "CASH" | "CARD" | "UPI"}`. Returns the
+  receipt number straight away. More than the balance due is `422`.
+- `GET /billing/bills/{id}` — the bill with lines, subtotal, discount, total, payments and balance.
+
+Bill status (HMS-F-019): `OPEN` (nothing paid) → `PARTIALLY_PAID` → `PAID`. A bill discounted to
+zero is `PAID` straight away. A `PAID` bill can't be changed. Card/UPI are recorded like cash; there
+is no payment gateway (playbook §9 risk).
 
 ### Patient search (US-06)
 
@@ -219,6 +284,12 @@ Errors:
 | `REQUIRE_DB_TLS` | `1` | Refuse a networked `DATABASE_URL` that doesn't force TLS. `0` only for a throwaway local DB (US-02). |
 
 ## Known limitations / out of scope
+
+- **Database upgrade:** there are no migrations. The billing changes add columns and tables, so an
+  existing `hms.db` (or the `hms-db` Docker volume: `docker compose down -v`) must be deleted and recreated.
+- A `PATIENT` login isn't linked to a patient record, so a patient account can book, cancel or
+  reschedule *any* patient's appointment. Linking users to UHIDs would be needed to restrict patients
+  to their own appointments.
 
 - No user-creation endpoint yet. Test/seed users must be inserted directly (see
   `tests/conftest.py`); staff account creation is HMS-F-019 (Staff Account & Role Administration).

@@ -18,7 +18,7 @@ from .schemas import AppointmentOut, OpdBookingRequest
 
 router = APIRouter(tags=["Appointments"])
 
-# HMS-F-005: a patient or receptionist books OPD appointments.
+# HMS-F-009: a patient or receptionist books OPD appointments.
 BOOKING_ROLES = (RECEPTIONIST, PATIENT)
 
 
@@ -50,7 +50,7 @@ def book_opd_appointment(
     if payload.department and payload.department.strip().lower() != doctor.department.lower():
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Doctor does not belong to the chosen department.")
 
-    # AC-HMS-F-005: booking succeeds only for an available slot, i.e. one the doctor's schedule offers.
+    # AC-HMS-F-009: booking succeeds only for an available slot, i.e. one the doctor's schedule offers.
     slot_start = to_utc_naive(payload.slot_start)
     if not is_schedule_slot(db, doctor, slot_start):
         raise HTTPException(status.HTTP_409_CONFLICT, SLOT_UNAVAILABLE_MESSAGE)
