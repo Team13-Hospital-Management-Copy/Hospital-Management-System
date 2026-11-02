@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import APPOINTMENT_STATUS_BOOKED, APPOINTMENT_STATUS_CANCELLED, Appointment, User
+from .models import APPOINTMENT_STATUS_BOOKED, APPOINTMENT_STATUS_CANCELLED, Appointment, AuditLogEntry, User
 from .notifications import (
     NotificationGateway,
     get_gateway,
@@ -16,11 +16,13 @@ from .notifications import (
     utcnow,
 )
 from .rbac import get_current_user, require_role
-from .roles import PATIENT, RECEPTIONIST
+from .roles import DOCTOR, PATIENT, RECEPTIONIST
 from .schemas import AppointmentCreate, AppointmentOut, AppointmentReschedule
 
-# HMS-F-005/006/007: a patient or receptionist creates, cancels or reschedules appointments.
+# HMS-F-009/010: a patient or receptionist books appointments.
 BOOKING_ROLES = (RECEPTIONIST, PATIENT)
+# HMS-F-011: "authorized users" (stakeholders: patient, receptionist, doctor) cancel or reschedule.
+CHANGE_ROLES = (RECEPTIONIST, PATIENT, DOCTOR)
 
 router = APIRouter(tags=["Appointments"])
 
@@ -40,7 +42,7 @@ class AppointmentChangeError(Exception):
 
 
 def change_cutoff() -> timedelta:
-    """HMS-F-007: how close to the slot a reschedule/cancel is still allowed.
+    """HMS-F-011: how close to the slot a reschedule/cancel is still allowed.
 
     Configured with APPOINTMENT_CHANGE_CUTOFF_HOURS (read at call time). Moving this into an
     admin-editable setting belongs with US-19 (Staff Account & Role Administration).
@@ -74,7 +76,7 @@ def book_appointment(
     appointment = Appointment(patient_uhid=patient_uhid, doctor_id=doctor_id, slot_start=slot_start)
     db.add(appointment)
     try:
-        # AC-HMS-F-006: the partial unique index rejects a second active booking for this
+        # AC-HMS-F-010: the partial unique index rejects a second active booking for this
         # doctor/slot, even when two requests race each other.
         db.flush()
     except IntegrityError:
@@ -112,7 +114,7 @@ def cancel_appointment(
     appointment = _get_active(db, appointment_id)
     _check_cutoff(appointment, now)
 
-    # AC-HMS-F-007: cancelling releases the slot (the unique index only covers BOOKED rows).
+    # AC-HMS-F-011: cancelling releases the slot (the unique index only covers BOOKED rows).
     appointment.status = APPOINTMENT_STATUS_CANCELLED
     appointment.cancelled_at = now
     on_appointment_cancelled(db, gateway, appointment, now)
@@ -138,7 +140,7 @@ def reschedule_appointment(
     if new_slot_start == appointment.slot_start:
         raise AppointmentChangeError(status.HTTP_400_BAD_REQUEST, "The new slot is the same as the current one.")
 
-    # AC-HMS-F-007: the existing row is moved, so no duplicate booking is created and the old slot
+    # AC-HMS-F-011: the existing row is moved, so no duplicate booking is created and the old slot
     # is freed in the same transaction.
     appointment.slot_start = new_slot_start
     appointment.rescheduled_count += 1
@@ -173,6 +175,11 @@ def booked_slots(db: Session, doctor_id: str, day: date) -> list[datetime]:
 # --- HTTP endpoints --------------------------------------------------------------------------
 
 
+def _audit(db: Session, user: User, event_type: str, detail: str) -> None:
+    db.add(AuditLogEntry(event_type=event_type, username=user.username, detail=detail))
+    db.commit()
+
+
 def _http_error(exc: Exception) -> HTTPException:
     if isinstance(exc, SlotUnavailableError):
         return HTTPException(status.HTTP_409_CONFLICT, SLOT_UNAVAILABLE_MESSAGE)
@@ -204,7 +211,7 @@ def create_appointment(
 def get_booked_slots(
     doctor_id: str, day: date, db: Session = Depends(get_db), _user: User = Depends(get_current_user)
 ) -> dict:
-    """HMS-F-006: real-time view of which slots are taken for a doctor on a given day (UTC)."""
+    """HMS-F-010: real-time view of which slots are taken for a doctor on a given day (UTC)."""
     return {"doctor_id": doctor_id, "day": day, "booked": booked_slots(db, doctor_id, day)}
 
 
@@ -225,12 +232,14 @@ def cancel(
     appointment_id: int,
     db: Session = Depends(get_db),
     gateway: NotificationGateway = Depends(get_gateway),
-    _user: User = Depends(require_role(*BOOKING_ROLES)),
+    user: User = Depends(require_role(*CHANGE_ROLES)),
 ) -> Appointment:
     try:
-        return cancel_appointment(db, gateway, appointment_id)
+        appointment = cancel_appointment(db, gateway, appointment_id)
     except AppointmentChangeError as exc:
         raise _http_error(exc) from None
+    _audit(db, user, "APPOINTMENT_CANCELLED", f"Appointment {appointment.id}")
+    return appointment
 
 
 @router.post(
@@ -243,9 +252,11 @@ def reschedule(
     payload: AppointmentReschedule,
     db: Session = Depends(get_db),
     gateway: NotificationGateway = Depends(get_gateway),
-    _user: User = Depends(require_role(*BOOKING_ROLES)),
+    user: User = Depends(require_role(*CHANGE_ROLES)),
 ) -> Appointment:
     try:
-        return reschedule_appointment(db, gateway, appointment_id, payload.new_slot_start)
+        appointment = reschedule_appointment(db, gateway, appointment_id, payload.new_slot_start)
     except (SlotUnavailableError, AppointmentChangeError) as exc:
         raise _http_error(exc) from None
+    _audit(db, user, "APPOINTMENT_RESCHEDULED", f"Appointment {appointment.id} moved to {appointment.slot_start:%Y-%m-%d %H:%M} UTC")
+    return appointment

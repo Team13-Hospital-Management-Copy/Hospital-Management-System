@@ -275,6 +275,7 @@ BILL_LINE_CATEGORIES = ("CONSULTATION", "LAB", "PHARMACY", "ROOM", "OTHER")
 class BillCreate(BaseModel):
     patient_uhid: str = Field(min_length=1, max_length=20)
     appointment_id: int | None = Field(default=None, gt=0)
+    admission_id: int | None = Field(default=None, gt=0)
 
 
 class BillLineItemCreate(BaseModel):
@@ -287,21 +288,69 @@ class BillLineItemOut(BaseModel):
     id: int
     category: str
     description: str
+    quantity: int
+    unit_price: Decimal | None
     amount: Decimal
+    source_type: str | None
+    source_id: int | None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class DiscountApply(BaseModel):
+    """Either apply a configured scheme (`scheme_id`) or a one-off manual discount
+    (`discount_percent` or `discount_amount`, which then needs a `reason` for the audit log)."""
+
+    scheme_id: int | None = Field(default=None, gt=0)
     discount_percent: Decimal | None = Field(default=None, ge=0, le=100, decimal_places=2)
     discount_amount: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
     reason: str = Field(default="", max_length=200)
 
     @model_validator(mode="after")
     def _exactly_one_discount(self):
+        given = [v for v in (self.scheme_id, self.discount_percent, self.discount_amount) if v is not None]
+        if len(given) != 1:
+            raise ValueError("Provide exactly one of scheme_id, discount_percent or discount_amount.")
+        if self.scheme_id is None and not self.reason.strip():
+            raise ValueError("A manual discount needs a reason.")
+        return self
+
+
+class TariffUpsert(BaseModel):
+    category: str
+    item_name: str = Field(min_length=1, max_length=150, description='Use "*" for the category default price.')
+    unit_price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
+
+
+class TariffOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    category: str
+    item_name: str
+    unit_price: Decimal
+
+
+class DiscountSchemeCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    discount_percent: Decimal | None = Field(default=None, gt=0, le=100, decimal_places=2)
+    discount_amount: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+
+    @model_validator(mode="after")
+    def _exactly_one(self):
         if (self.discount_percent is None) == (self.discount_amount is None):
             raise ValueError("Provide exactly one of discount_percent or discount_amount.")
         return self
+
+
+class DiscountSchemeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    discount_percent: Decimal | None
+    discount_amount: Decimal | None
+    is_active: bool
 
 
 class PaymentCreate(BaseModel):
@@ -323,12 +372,14 @@ class BillOut(BaseModel):
     id: int
     patient_uhid: str
     appointment_id: int | None
+    admission_id: int | None
     status: str
     line_items: list[BillLineItemOut]
     subtotal: Decimal
     discount_percent: Decimal | None
     discount_amount: Decimal | None
     discount_reason: str
+    discount_scheme_id: int | None
     total: Decimal
     amount_paid: Decimal
     balance_due: Decimal

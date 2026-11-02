@@ -1,4 +1,4 @@
-"""US-10 / HMS-F-007 / TC-Appt-03: reschedule or cancel up to a configurable cutoff."""
+"""US-10 / HMS-F-011 / TC-Apt-03: reschedule or cancel up to a configurable cutoff."""
 
 from datetime import datetime, timedelta
 
@@ -152,3 +152,32 @@ def test_reschedule_requires_login(client, receptionist_header):
     )
 
     assert response.status_code == 401
+
+
+def test_doctor_can_cancel_and_reschedule_but_pharmacist_cannot(client, db_session, receptionist_header, seed_user, login_token):
+    # HMS-F-011: authorized users (patient, receptionist, doctor) cancel or reschedule; others are denied.
+    from app.models import AuditLogEntry
+    from app.roles import DOCTOR, PHARMACIST
+
+    seed_user(username="doc_us10", role=DOCTOR)
+    seed_user(username="pharm_us10", role=PHARMACIST)
+    doctor = {"Authorization": f"Bearer {login_token('doc_us10')}"}
+    pharmacist = {"Authorization": f"Bearer {login_token('pharm_us10')}"}
+    first = book(client, receptionist_header, "UHID-1", slot=future_slot(hour=10))
+    second = book(client, receptionist_header, "UHID-2", slot=future_slot(hour=11))
+
+    assert client.post(f"{APPOINTMENTS_URL}/{first['id']}/cancel", headers=pharmacist).status_code == 403
+    assert client.post(f"{APPOINTMENTS_URL}/{first['id']}/cancel", headers=doctor).status_code == 200
+    moved = client.post(
+        f"{APPOINTMENTS_URL}/{second['id']}/reschedule",
+        json={"new_slot_start": future_slot(hour=12).isoformat()},
+        headers=doctor,
+    )
+    assert moved.status_code == 200
+
+    events = {
+        (e.event_type, e.username)
+        for e in db_session.query(AuditLogEntry).filter(AuditLogEntry.event_type.like("APPOINTMENT_%"))
+    }
+    assert ("APPOINTMENT_CANCELLED", "doc_us10") in events
+    assert ("APPOINTMENT_RESCHEDULED", "doc_us10") in events

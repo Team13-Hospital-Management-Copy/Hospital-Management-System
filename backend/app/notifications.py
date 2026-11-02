@@ -15,7 +15,7 @@ logger = logging.getLogger("hms.notifications")
 
 router = APIRouter(tags=["Notifications"])
 
-# AC-HMS-F-008: a reminder is sent 24 hours before the appointment.
+# AC-HMS-F-012: a reminder is sent 24 hours before the appointment.
 REMINDER_LEAD_TIME = timedelta(hours=24)
 
 # A failed send is retried by the dispatcher until it has been attempted this many times.
@@ -137,7 +137,7 @@ def _cancel_pending_reminders(db: Session, appointment: Appointment) -> None:
 
 
 def on_appointment_booked(db: Session, gateway: NotificationGateway, appointment: Appointment, now: datetime) -> None:
-    # AC-HMS-F-008: the confirmation is sent synchronously as part of the booking request, so it
+    # AC-HMS-F-012: the confirmation is sent synchronously as part of the booking request, so it
     # goes out well within 1 minute; the reminder is queued for 24h before the slot.
     message = (
         f"Your appointment (#{appointment.id}) with doctor {appointment.doctor_id} is confirmed for "

@@ -1,4 +1,4 @@
-"""US-02 / HMS-SR-001, HMS-NF-003: TLS 1.2+ for client-server and server-database connections."""
+"""US-02 / HMS-SR-002, HMS-NF-003: TLS 1.2+ for client-server and server-database connections."""
 
 import os
 import ssl
@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-# AC-HMS-SR-001: connections using TLS below 1.2 (or plaintext) are rejected.
+# AC-HMS-SR-002: connections using TLS below 1.2 (or plaintext) are rejected.
 MIN_TLS_VERSION = ssl.TLSVersion.TLSv1_2
 
 HTTPS_REQUIRED_MESSAGE = "HTTPS (TLS 1.2 or higher) is required."

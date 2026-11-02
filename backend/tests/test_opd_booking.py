@@ -1,4 +1,4 @@
-"""US-08 / HMS-F-005 / TC-Appt-01: book an OPD appointment with real-time slot availability."""
+"""US-08 / HMS-F-009 / TC-Apt-01: book an OPD appointment with real-time slot availability."""
 
 from datetime import date, datetime, timedelta
 
@@ -43,7 +43,7 @@ def slot(day: date, hhmm: str) -> str:
 
 
 def test_receptionist_books_available_slot_and_it_becomes_unavailable(client, seed_user, login_token, db_session):
-    # AC-HMS-F-005: booking succeeds only for an available slot and the slot is then marked unavailable.
+    # AC-HMS-F-009: booking succeeds only for an available slot and the slot is then marked unavailable.
     doctor_id, uhid, day = setup_world(client, seed_user, login_token)
     token = login_token("reception1")
 

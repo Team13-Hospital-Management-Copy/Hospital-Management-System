@@ -1,4 +1,4 @@
-"""US-14 / HMS-F-011 / TC-Clin-03: order a lab test and record its result."""
+"""US-14 / HMS-F-014 / TC-Med-02: order a lab test and record its result."""
 
 from datetime import datetime, timedelta
 
