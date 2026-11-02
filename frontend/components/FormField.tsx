@@ -49,3 +49,63 @@ export function FormField({
     </div>
   );
 }
+
+export function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  accent = "teal",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  accent?: Accent;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-stone-700">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 shadow-sm transition focus:outline-none focus:ring-2 ${ACCENT_FOCUS[accent]}`}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+export function TextAreaField({
+  label,
+  value,
+  onChange,
+  rows = 3,
+  placeholder,
+  accent = "teal",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  rows?: number;
+  placeholder?: string;
+  accent?: Accent;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-stone-700">{label}</label>
+      <textarea
+        rows={rows}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 shadow-sm transition focus:outline-none focus:ring-2 ${ACCENT_FOCUS[accent]}`}
+      />
+    </div>
+  );
+}

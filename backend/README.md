@@ -51,7 +51,8 @@ DATABASE_URL=postgresql://hms_app:hms_dev_password@localhost/hms REQUIRE_DB_TLS=
 ### Demo accounts for the frontend UI
 
 There's no self-service staff registration (staff accounts are provisioned by an
-administrator - see US-19, not yet built), so `../frontend` needs two seeded accounts first:
+administrator, US-19), so for a demo seed one account per role (admin, receptionist, doctor,
+pharmacist) first:
 
 ```bash
 python -m scripts.seed_demo_users

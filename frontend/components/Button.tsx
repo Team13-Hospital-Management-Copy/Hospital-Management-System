@@ -16,7 +16,16 @@ export function PrimaryButton({ className = "", accent = "teal", ...props }: Pri
   return (
     <button
       {...props}
-      className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${ACCENT_BUTTON[accent]} ${className}`}
+      className={`${/\bw-/.test(className) ? "" : "w-full"} rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${ACCENT_BUTTON[accent]} ${className}`}
+    />
+  );
+}
+
+export function SecondaryButton({ className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...props}
+      className={`rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:border-stone-400 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     />
   );
 }

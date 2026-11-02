@@ -27,7 +27,10 @@ export function Nav() {
         </Link>
         {session && (
           <div className="flex items-center gap-4 text-sm text-stone-600">
-            <span>
+            <Link href="/dashboard" className="font-medium text-stone-700 hover:text-stone-900">
+              Dashboard
+            </Link>
+            <span className="hidden sm:inline">
               Signed in as <span className="font-medium text-stone-900">{session.username}</span>
             </span>
             <button
