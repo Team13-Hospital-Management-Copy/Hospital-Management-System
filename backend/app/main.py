@@ -35,8 +35,8 @@ logger = logging.getLogger("hms")
 
 
 async def _reminder_loop(interval_seconds: float) -> None:
-    # AC-HMS-F-008: periodically send reminders that have become due (24h before each slot)
-    # and retry any sends that failed.
+    # HMS-F-012 (US-11): periodically send reminders that have become due (24h before each
+    # slot) and retry any sends that failed.
     while True:
         try:
             with SessionLocal() as db:
