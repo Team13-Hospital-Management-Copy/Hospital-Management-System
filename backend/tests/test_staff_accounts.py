@@ -1,4 +1,9 @@
-"""US-19 / HMS-F-019 / TC-Admin-01: create, modify and deactivate staff accounts."""
+"""US-19 / TC-SEC: create, modify and deactivate staff accounts.
+
+No dedicated SRS v2 requirement ID exists for staff-account administration (its HMS-F-019 is
+billing payments, not this); this satisfies HMS-SR-001 (RBAC) and HMS-SR-004 (audit logging of
+administrative actions) instead - see staff_accounts.py.
+"""
 
 from app.roles import ADMINISTRATOR, DOCTOR, RECEPTIONIST
 from app.models import AuditLogEntry
@@ -106,7 +111,7 @@ def test_role_change_takes_effect_on_next_request(client, db_session, seed_user,
     audit = db_session.query(AuditLogEntry).filter_by(event_type="STAFF_ACCOUNT_UPDATED").first()
     assert audit is not None
 
-    # AC-HMS-F-019: the existing session token reflects the new role immediately, not after
+    # HMS-SR-001: the existing session token reflects the new role immediately, not after
     # a fresh login - get_current_user re-reads the role from the database every request.
     assert client.get(STAFF_URL, headers=staff_headers).status_code == 200
 

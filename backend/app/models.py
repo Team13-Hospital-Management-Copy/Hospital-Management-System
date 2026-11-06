@@ -33,9 +33,9 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(30), default=RECEPTIONIST)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
     is_locked: Mapped[bool] = mapped_column(Boolean, default=False)
-    # AC-HMS-F-019: administrative deactivation, distinct from is_locked (automatic
-    # lockout after repeated failed logins, US-01). An administrator flips this; the
-    # account itself never does.
+    # Administrative deactivation, distinct from is_locked (automatic lockout after repeated
+    # failed logins, US-01). An administrator flips this; the account itself never does.
+    # No dedicated SRS v2 requirement ID (HMS-F-019 there is billing payments) - see auth.py.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     locked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

@@ -65,10 +65,11 @@ def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, INVALID_TOKEN_MESSAGE)
 
     if not user.is_active:
-        # AC-HMS-F-019 says a deactivated account "can no longer log in"; cutting off an
-        # already-open session too (not just blocking future logins) is the safer reading -
-        # otherwise deactivating someone mid-shift wouldn't actually remove their access for
-        # up to IDLE_TIMEOUT. Revoke the token so this isn't re-checked on every request.
+        # A deactivated account "can no longer log in" (no dedicated SRS v2 requirement ID for
+        # staff-account administration - see auth.py); cutting off an already-open session too
+        # (not just blocking future logins) is the safer reading - otherwise deactivating
+        # someone mid-shift wouldn't actually remove their access for up to IDLE_TIMEOUT.
+        # Revoke the token so this isn't re-checked on every request.
         db.delete(auth_token)
         db.commit()
         raise HTTPException(status.HTTP_403_FORBIDDEN, ACCOUNT_DEACTIVATED_MESSAGE)
@@ -80,7 +81,7 @@ def get_current_user(
 
 
 def revoke_current_token(request: Request, db: Session) -> None:
-    """AC-HMS-SR-005: logout immediately invalidates the session token.
+    """HMS-SR-005: logout immediately invalidates the session token.
 
     Idempotent: a missing or already-invalid token is not an error, since the caller's
     goal (not being logged in) is already achieved.
@@ -92,7 +93,7 @@ def revoke_current_token(request: Request, db: Session) -> None:
 
 
 def require_role(*allowed_roles: str):
-    """AC-HMS-SR-002: deny and log access attempts outside a role's permitted scope."""
+    """HMS-SR-001: deny and log access attempts outside a role's permitted scope."""
 
     def _dependency(
         request: Request,

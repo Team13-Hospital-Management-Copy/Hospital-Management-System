@@ -11,7 +11,9 @@ from .security import verify_password
 
 router = APIRouter(tags=["Auth"])
 
-# AC-HMS-F-004: lock the account after 5 consecutive failed attempts.
+# Lock the account after 5 consecutive failed attempts. SRS v2 (Team-13_SRS.pdf) has no
+# standalone lockout requirement - this is defense-in-depth under HMS-F-001 (authentication)
+# and HMS-SR-001 (RBAC enforcement), kept from the original SRS since nothing asked it removed.
 MAX_FAILED_ATTEMPTS = 5
 
 GENERIC_INVALID_CREDENTIALS_MESSAGE = "Invalid username or password."
@@ -37,13 +39,16 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, GENERIC_INVALID_CREDENTIALS_MESSAGE)
 
     if user.is_locked:
-        # AC-HMS-SR-006: further attempts against a locked account are blocked and logged.
+        # Further attempts against a locked account are blocked and logged (see the
+        # MAX_FAILED_ATTEMPTS note above on why there's no SRS v2 requirement ID here).
         _log(db, "LOGIN_BLOCKED_LOCKED_ACCOUNT", user.username)
         db.commit()
         raise HTTPException(status.HTTP_423_LOCKED, ACCOUNT_LOCKED_MESSAGE)
 
     if not user.is_active:
-        # AC-HMS-F-019: a deactivated account can no longer log in.
+        # A deactivated account can no longer log in. SRS v2 has no dedicated staff-account-
+        # administration requirement (HMS-F-019 there is billing payments, not this) - this
+        # satisfies HMS-SR-001 (RBAC) and HMS-SR-004 (audit logging of administrative actions).
         _log(db, "LOGIN_BLOCKED_DEACTIVATED_ACCOUNT", user.username)
         db.commit()
         raise HTTPException(status.HTTP_403_FORBIDDEN, ACCOUNT_DEACTIVATED_MESSAGE)

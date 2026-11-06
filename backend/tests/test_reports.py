@@ -1,4 +1,4 @@
-"""US-20 / HMS-F-020 / TC-Admin-02: operational reports, exportable to PDF/CSV."""
+"""US-20 / HMS-F-020 / TC-REP: operational reports, exportable to PDF/CSV."""
 
 from datetime import date, datetime, timedelta
 

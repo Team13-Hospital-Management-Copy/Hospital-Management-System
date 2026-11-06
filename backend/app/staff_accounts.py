@@ -9,9 +9,12 @@ from .roles import ADMINISTRATOR, ALL_ROLES, SYSTEM_ADMINISTRATOR
 from .schemas import StaffAccountCreate, StaffAccountOut, StaffAccountUpdate
 from .security import hash_password
 
-# US-19 / HMS-F-019: an administrator creates, modifies and deactivates staff accounts and
-# assigns roles. RBAC enforcement itself (role checks on every endpoint) is US-04; this story
-# is the account-management surface that feeds it.
+# US-19: an administrator creates, modifies and deactivates staff accounts and assigns roles.
+# RBAC enforcement itself (role checks on every endpoint) is US-04 (HMS-SR-001); this story is
+# the account-management surface that feeds it. SRS v2 has no dedicated requirement ID for
+# staff-account administration (its HMS-F-019 is billing payments, not this) - the closest
+# fits are HMS-SR-001 (RBAC) and HMS-SR-004 (audit logging of administrative actions), both
+# of which this story's every endpoint satisfies directly.
 ADMIN_ROLES = (ADMINISTRATOR, SYSTEM_ADMINISTRATOR)
 
 router = APIRouter(prefix="/admin/staff", tags=["Staff Administration"])
