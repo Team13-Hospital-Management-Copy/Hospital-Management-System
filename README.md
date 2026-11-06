@@ -79,6 +79,12 @@ The project testing plan covers:
 - Compatibility Testing
 - Regression Testing
 
+Generated reports (unit test results, a live end-to-end system validation run, statement and
+branch code coverage) live in [`docs/reports/`](docs/reports/); story-specific manual test
+execution records live in [`docs/test-results/`](docs/test-results/); the non-functional
+requirements verification pass (performance, reliability, usability, audit logging) is
+[`backend/NFR_VERIFICATION.md`](backend/NFR_VERIFICATION.md).
+
 ## Installation and Setup
 
 The backend is a FastAPI app and the frontend is a Next.js app - see each one's README for
