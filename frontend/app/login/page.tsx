@@ -59,6 +59,13 @@ export default function LoginPage() {
           <code className="font-mono">reception1</code> / <code className="font-mono">Reception#12345</code>{" "}
           (Receptionist)
         </p>
+        <p>
+          <code className="font-mono">doctor1</code> / <code className="font-mono">Doctor#12345</code> (Doctor)
+        </p>
+        <p>
+          <code className="font-mono">pharmacist1</code> / <code className="font-mono">Pharmacist#12345</code>{" "}
+          (Pharmacist)
+        </p>
         <p className="mt-1">
           Seed them with <code className="font-mono">python -m scripts.seed_demo_users</code> from{" "}
           <code className="font-mono">backend/</code>.

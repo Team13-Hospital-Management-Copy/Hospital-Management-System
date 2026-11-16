@@ -12,7 +12,7 @@ const sourceSerif = Source_Serif_4({
 
 export const metadata: Metadata = {
   title: "Hospital Management System",
-  description: "Team 13 Hospital Management System - Sprint 1 demo UI",
+  description: "Team 13 Hospital Management System - Sprint 1 & 2 demo UI",
 };
 
 export default function RootLayout({
